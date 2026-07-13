@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card, Screen, SectionHeader, StatTile, Subtitle, Title } from '@/components/ui';
 import { EXERCISES } from '@/data/exercises';
 import { FOODS } from '@/data/foods';
+import { REGIONAL_FOODS } from '@/data/regionalFoods';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
 
@@ -41,6 +42,7 @@ export default function Admin() {
       <View style={styles.tiles}>
         <StatTile label="Exercises" value={`${EXERCISES.length}`} />
         <StatTile label="Foods" value={`${FOODS.length}`} accent={colors.accent} />
+        <StatTile label="Regional foods" value={`${REGIONAL_FOODS.length}`} accent={colors.warning} />
         <StatTile label="Active users" value={user ? '1' : '0'} accent={colors.success} />
       </View>
 

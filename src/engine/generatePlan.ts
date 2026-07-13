@@ -2,7 +2,7 @@
 // AI (Claude) is applied later, only to personalize wording — never the numbers.
 
 import { exercisesFor, type ExerciseTemplate } from '../data/exercises';
-import { foodsFor } from '../data/foods';
+import { queryFoods, toMealItem } from '../data/foodRegistry';
 import type {
   DayMeals,
   MealItem,
@@ -22,21 +22,24 @@ function pick<T>(arr: T[], seed: number): T {
   return arr[seed % arr.length];
 }
 
+// Region-aware local meal planning. When the user has set a region/city/religion
+// and budget/cooking-time, meals are drawn from the regional food database
+// respecting all of those; otherwise it uses the generic pool.
 function buildMeals(p: OnboardingProfile): DayMeals[] {
   const slots: MealItem['slot'][] = ['breakfast', 'lunch', 'dinner', 'snack'];
   return ALL_DAYS.map((day, di) => {
     const items: MealItem[] = slots.map((slot, si) => {
-      const pool = foodsFor(p.dietType, slot, p.allergies);
-      // Fallback to omnivore breakfast if a diet/allergy combo empties a slot.
-      const source =
-        pool.length > 0 ? pool : foodsFor('omnivore', slot, []);
-      const food = pick(source, di * 3 + si);
-      return {
+      const pool = queryFoods({
         slot,
-        name: food.name,
-        calories: food.calories,
-        proteinG: food.proteinG,
-      };
+        diet: p.dietType,
+        allergies: p.allergies,
+        region: p.region,
+        budget: p.budget,
+        religion: p.religion,
+        maxCookTimeMin: p.cookingTimeMin,
+      });
+      const food = pick(pool, di * 3 + si);
+      return toMealItem(food);
     });
     return { day, items };
   });

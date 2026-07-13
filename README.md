@@ -73,6 +73,21 @@ Safeguards worth noting: calorie changes require ≥2 weekly reviews and are cap
 at 150 kcal/step; the coach is hard-constrained to approved foods/exercises and
 told never to invent numbers or give medical diagnoses.
 
+## What's built (Phase 3 — Local food & lifestyle intelligence)
+
+Seeded for the **India** market first (North + South), extensible to other regions.
+
+| Spec area | Where |
+|---|---|
+| **Regional food DB** — local dishes with serving size, calories, protein/carbs/fat/fibre, ingredients, veg status, approx cost, cooking time, availability | [src/data/regionalFoods.ts](src/data/regionalFoods.ts) |
+| **Local meal planning** — region/city/religion/budget/cooking-time-aware generation | [src/data/foodRegistry.ts](src/data/foodRegistry.ts), [app/local-preferences.tsx](app/local-preferences.tsx) |
+| **Meal replacement engine** — every meal has "Replace"; options match calories, protein, cost, cooking time, diet & local availability | [src/engine/mealReplacement.ts](src/engine/mealReplacement.ts), [app/replace-meal.tsx](app/replace-meal.tsx) |
+| **Grocery planning** — weekly list, estimated cost, quantities, already-owned exclusion, food-waste tips, meal-prep steps | [src/engine/grocery.ts](src/engine/grocery.ts), [app/grocery.tsx](app/grocery.tsx) |
+| **Restaurant mode** — enter a dish → better choices, portion guidance, modifications, calorie range, confidence level | [src/engine/restaurant.ts](src/engine/restaurant.ts), [app/restaurant.tsx](app/restaurant.tsx) |
+
+Set your region under **Plan → 📍 Local** to switch meal planning to your local
+cuisine. Grocery, Restaurant, and per-meal Replace all live on the **Plan** tab.
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan

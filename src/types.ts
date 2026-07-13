@@ -57,6 +57,72 @@ export interface OnboardingProfile {
   cookingTimeMin: number;
   medicalNotes: string;
   coachTone: CoachTone;
+  // Phase 3 — local & lifestyle preferences (optional; enable regional planning)
+  region?: Region;
+  city?: string;
+  religion?: Religion;
+  cookingSkill?: 'basic' | 'intermediate' | 'advanced';
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 — Local food & lifestyle intelligence
+// ---------------------------------------------------------------------------
+
+export type Region = 'generic' | 'north_india' | 'south_india';
+export type Religion = 'none' | 'hindu' | 'muslim' | 'jain' | 'christian' | 'other';
+export type CostLevel = 'low' | 'medium' | 'high';
+export type Availability = 'common' | 'seasonal' | 'rare';
+
+// Normalized food record used across planning, replacement, and grocery.
+export interface FoodInfo {
+  id: string;
+  name: string;
+  slot: MealItem['slot'];
+  region: Region;
+  cuisine: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  fibreG: number;
+  ingredients: string[];
+  vegetarian: boolean;
+  vegan: boolean;
+  containsEgg: boolean;
+  containsMeat: boolean;
+  diets: DietType[];
+  costLevel: CostLevel;
+  approxCost: number; // local currency units (₹ for the India seed)
+  cookingTimeMin: number;
+  availability: Availability;
+  allergens: string[];
+}
+
+export interface GroceryItem {
+  ingredient: string;
+  fromMeals: number; // how many meals use it this week
+  quantityNote: string; // rough weekly quantity
+  estCost: number;
+  owned: boolean;
+}
+
+export interface GroceryPlan {
+  items: GroceryItem[];
+  totalCost: number;
+  ownedSavings: number;
+  wasteTips: string[];
+  prepSteps: string[];
+}
+
+export interface RestaurantEvaluation {
+  dish: string;
+  estCalories: [number, number];
+  estProteinG: number;
+  confidence: 'low' | 'medium' | 'high';
+  verdict: 'great' | 'ok' | 'occasional';
+  betterChoices: string[];
+  portionGuidance: string;
+  modifications: string[];
 }
 
 export interface Macros {
@@ -73,6 +139,7 @@ export interface MealItem {
   calories: number;
   proteinG: number;
   note?: string; // AI-personalized wording when available
+  foodId?: string; // links to the food registry (Phase 3) for rich data
 }
 
 export interface DayMeals {

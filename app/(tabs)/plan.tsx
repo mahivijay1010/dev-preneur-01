@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -8,9 +9,16 @@ import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
 
 export default function PlanScreen() {
-  const { plan } = useAppStore();
+  const router = useRouter();
+  const { plan, profile } = useAppStore();
   const [tab, setTab] = useState<'meals' | 'workouts' | 'nutrition'>('meals');
   const [openEx, setOpenEx] = useState<string | null>(null);
+  const regionLabel =
+    profile?.region && profile.region !== 'generic'
+      ? profile.region === 'north_india'
+        ? 'North Indian'
+        : 'South Indian'
+      : null;
 
   if (!plan) {
     return (
@@ -29,7 +37,20 @@ export default function PlanScreen() {
         {plan.macros.proteinG}g protein · {plan.macros.carbsG}g carbs ·{' '}
         {plan.macros.fatG}g fat
         {plan.personalized ? '  ·  ✨ AI-personalized' : ''}
+        {regionLabel ? `  ·  📍 ${regionLabel}` : ''}
       </Subtitle>
+
+      <View style={styles.actions}>
+        <Pressable style={styles.action} onPress={() => router.push('/grocery')}>
+          <Text style={styles.actionText}>🛒 Grocery</Text>
+        </Pressable>
+        <Pressable style={styles.action} onPress={() => router.push('/restaurant')}>
+          <Text style={styles.actionText}>🍽️ Restaurant</Text>
+        </Pressable>
+        <Pressable style={styles.action} onPress={() => router.push('/local-preferences')}>
+          <Text style={styles.actionText}>📍 Local</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.tabs}>
         {(['meals', 'workouts', 'nutrition'] as const).map((t) => (
@@ -72,8 +93,21 @@ export default function PlanScreen() {
               {d.items.map((m) => (
                 <View key={m.slot} style={styles.mealRow}>
                   <Text style={styles.slot}>{m.slot}</Text>
-                  <Text style={styles.mealName}>{m.name}</Text>
-                  <Text style={styles.macros}>{m.calories} · {m.proteinG}g</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.mealName}>{m.name}</Text>
+                    <Text style={styles.macros}>{m.calories} kcal · {m.proteinG}g protein</Text>
+                  </View>
+                  <Pressable
+                    style={styles.replaceBtn}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/replace-meal',
+                        params: { day: d.day, slot: m.slot },
+                      })
+                    }
+                  >
+                    <Text style={styles.replaceText}>Replace</Text>
+                  </Pressable>
                 </View>
               ))}
             </Card>
@@ -128,6 +162,26 @@ export default function PlanScreen() {
 }
 
 const styles = StyleSheet.create({
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  action: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionText: { color: colors.text, fontWeight: '700', fontSize: font.small },
+  replaceBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.primaryDim,
+  },
+  replaceText: { color: colors.primary, fontSize: font.tiny, fontWeight: '700' },
   tabs: { flexDirection: 'row', gap: spacing.sm },
   tab: {
     flex: 1,

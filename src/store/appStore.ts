@@ -13,10 +13,13 @@ import type {
   Adjustment,
   CoachMessage,
   DailyLog,
+  FoodInfo,
+  MealItem,
   OnboardingProfile,
   Plan,
   User,
   WeeklyReview,
+  Weekday,
 } from '../types';
 
 function uid(prefix: string): string {
@@ -35,6 +38,9 @@ interface AppState {
   reviews: WeeklyReview[];
   adjustments: Adjustment[];
   chat: CoachMessage[];
+
+  // Phase 3 — local food & lifestyle
+  ownedIngredients: string[];
 
   // auth
   signIn: (email: string, name: string, provider: User['provider']) => void;
@@ -55,6 +61,13 @@ interface AppState {
     review: Omit<WeeklyReview, 'id' | 'createdAt'>,
   ) => Adjustment | null;
   addChatMessage: (msg: Omit<CoachMessage, 'id' | 'createdAt'>) => void;
+
+  // Phase 3 actions
+  updateLocalPreferences: (
+    patch: Pick<OnboardingProfile, 'region' | 'city' | 'religion' | 'cookingSkill'>,
+  ) => Promise<void>;
+  replaceMeal: (day: Weekday, slot: MealItem['slot'], food: FoodInfo) => void;
+  setOwnedIngredients: (list: string[]) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -69,6 +82,7 @@ export const useAppStore = create<AppState>()(
       reviews: [],
       adjustments: [],
       chat: [],
+      ownedIngredients: [],
 
       signIn: (email, name, provider) => {
         // Demo auth: any credentials create/return a local user.
@@ -101,6 +115,7 @@ export const useAppStore = create<AppState>()(
           reviews: [],
           adjustments: [],
           chat: [],
+          ownedIngredients: [],
         }),
 
       setProfile: (p) => set({ profile: p }),
@@ -161,6 +176,40 @@ export const useAppStore = create<AppState>()(
             { ...msg, id: uid('msg'), createdAt: new Date().toISOString() },
           ],
         }),
+
+      updateLocalPreferences: async (patch) => {
+        const current = get().profile;
+        if (!current) return;
+        set({ profile: { ...current, ...patch } });
+        // Regenerate the plan so meals reflect the new region/religion/etc.
+        await get().generatePlan();
+      },
+
+      replaceMeal: (day, slot, food) => {
+        const plan = get().plan;
+        if (!plan) return;
+        const meals = plan.meals.map((d) =>
+          d.day !== day
+            ? d
+            : {
+                ...d,
+                items: d.items.map((it) =>
+                  it.slot !== slot
+                    ? it
+                    : {
+                        slot: food.slot,
+                        name: food.name,
+                        calories: food.calories,
+                        proteinG: food.proteinG,
+                        foodId: food.id,
+                      },
+                ),
+              },
+        );
+        set({ plan: { ...plan, meals } });
+      },
+
+      setOwnedIngredients: (list) => set({ ownedIngredients: list }),
     }),
     {
       name: 'fitplan-store-v1',
@@ -173,6 +222,7 @@ export const useAppStore = create<AppState>()(
         reviews: s.reviews,
         adjustments: s.adjustments,
         chat: s.chat,
+        ownedIngredients: s.ownedIngredients,
       }),
       onRehydrateStorage: () => (state) => {
         // Mark hydrated so the router can gate on real state, not the initial blank.
