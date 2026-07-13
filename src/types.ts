@@ -25,7 +25,12 @@ export type Equipment =
   | 'bench'
   | 'full_gym';
 
-export type CoachTone = 'supportive' | 'direct' | 'scientific' | 'minimal';
+export type CoachTone =
+  | 'supportive'
+  | 'direct'
+  | 'scientific'
+  | 'minimal'
+  | 'competitive';
 
 export interface User {
   id: string;
@@ -123,6 +128,56 @@ export interface RestaurantEvaluation {
   betterChoices: string[];
   portionGuidance: string;
   modifications: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4 — Retention & behaviour change
+// ---------------------------------------------------------------------------
+
+export type ClothingFit = 'tighter' | 'same' | 'looser';
+
+// Non-scale progress captured periodically. All fields optional.
+export interface Measurement {
+  date: string; // YYYY-MM-DD
+  waistCm?: number;
+  chestCm?: number;
+  armsCm?: number;
+  hipsCm?: number;
+  restingHr?: number;
+  workoutCapacity?: 1 | 2 | 3 | 4 | 5; // subjective "how much could you do"
+  clothingFit?: ClothingFit;
+  note?: string; // stands in for a progress-photo caption until Phase 5 camera
+}
+
+// A behaviour pattern detected from the user's own logs, with an intervention.
+export interface HabitInsight {
+  id: string;
+  severity: 'info' | 'suggestion' | 'warning';
+  pattern: string; // what we observed
+  intervention: string; // what we'll do / suggest about it
+}
+
+export interface AdherenceComponent {
+  key: string;
+  label: string;
+  score: number; // 0-100
+  weight: number; // relative weight
+}
+
+export interface AdherenceScore {
+  score: number; // 0-100 overall
+  band: 'building' | 'solid' | 'excellent';
+  components: AdherenceComponent[];
+  daysConsidered: number;
+}
+
+export interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  achieved: boolean;
+  achievedHint?: string; // e.g. "5/5" progress text
 }
 
 export interface Macros {

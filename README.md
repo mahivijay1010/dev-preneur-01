@@ -88,6 +88,20 @@ Seeded for the **India** market first (North + South), extensible to other regio
 Set your region under **Plan → 📍 Local** to switch meal planning to your local
 cuisine. Grocery, Restaurant, and per-meal Replace all live on the **Plan** tab.
 
+## What's built (Phase 4 — Retention & behaviour change)
+
+| Spec area | Where |
+|---|---|
+| **Habit intelligence** — detects real patterns from logs (weekday workout skips, weekend logging drop-off, chronic protein misses, poor-sleep→low-energy) and pairs each with a targeted intervention | [src/engine/habits.ts](src/engine/habits.ts) |
+| **Adherence score** — one 0-100 number from 6 weighted components (workouts, meals, protein, sleep, weigh-ins, recovery) over a forgiving 14-day rolling window | [src/engine/adherence.ts](src/engine/adherence.ts) |
+| **Non-scale progress** — waist/chest/arms/hips, resting HR, workout capacity, clothing fit (progress photos land in Phase 5) | [app/measurements.tsx](app/measurements.tsx) |
+| **Milestones** — earned purely from real data: first 5 workouts, first month consistent, strength increase, waist reduction, improved sleep, first repaired day | [src/engine/milestones.ts](src/engine/milestones.ts), [app/milestones.tsx](app/milestones.tsx) |
+| **Coaching personalities** — supportive / direct / scientific / minimal / competitive; only the tone changes, recommendations are identical | Profile tab + [src/services/coach.ts](src/services/coach.ts) |
+
+The **Progress** tab now leads with the adherence score, then insights,
+milestones, and a non-scale measurements entry. Change your coaching personality
+any time under the **Profile** tab.
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan

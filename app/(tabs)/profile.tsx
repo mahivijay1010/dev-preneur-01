@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Button, Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
+import { Button, Card, ChipGroup, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
 import { isAIEnabled } from '@/services/claude';
 import {
   DEFAULT_REMINDERS,
@@ -13,12 +13,13 @@ import {
 import { getJSON, setJSON } from '@/services/storage';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
+import type { CoachTone } from '@/types';
 
 const PREFS_KEY = 'fitplan-reminders-v1';
 
 export default function Profile() {
   const router = useRouter();
-  const { user, profile, plan, regenerate, generating, signOut } = useAppStore();
+  const { user, profile, plan, regenerate, generating, signOut, setCoachTone } = useAppStore();
   const [prefs, setPrefs] = useState<ReminderPrefs>(DEFAULT_REMINDERS);
 
   useEffect(() => {
@@ -62,6 +63,24 @@ export default function Profile() {
           </>
         )}
       </Card>
+
+      {profile && (
+        <Card>
+          <SectionHeader>Coaching personality</SectionHeader>
+          <Text style={styles.dim}>Only the tone changes — your plan and advice stay the same.</Text>
+          <ChipGroup<CoachTone>
+            value={profile.coachTone}
+            onChange={setCoachTone}
+            options={[
+              { label: 'Supportive', value: 'supportive' },
+              { label: 'Direct', value: 'direct' },
+              { label: 'Scientific', value: 'scientific' },
+              { label: 'Minimal', value: 'minimal' },
+              { label: 'Competitive', value: 'competitive' },
+            ]}
+          />
+        </Card>
+      )}
 
       <Card>
         <View style={styles.switchRow}>

@@ -134,6 +134,7 @@ export default function Onboarding() {
               { label: 'Direct', value: 'direct' },
               { label: 'Scientific', value: 'scientific' },
               { label: 'Minimal', value: 'minimal' },
+              { label: 'Competitive', value: 'competitive' },
             ]}
           />
         </View>

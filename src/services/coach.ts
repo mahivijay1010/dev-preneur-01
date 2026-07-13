@@ -20,6 +20,7 @@ const TONE: Record<OnboardingProfile['coachTone'], string> = {
   direct: 'concise and direct',
   scientific: 'precise, briefly explaining the reasoning',
   minimal: 'very brief',
+  competitive: 'competitive and motivating, treating each day as a challenge to win',
 };
 
 function buildSystem(profile: OnboardingProfile, plan: Plan): string {

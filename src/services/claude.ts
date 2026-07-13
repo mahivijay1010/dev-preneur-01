@@ -18,6 +18,7 @@ const TONE_HINT: Record<CoachTone, string> = {
   direct: 'concise, no-nonsense, and action-oriented',
   scientific: 'precise and evidence-based, briefly citing the why',
   minimal: 'extremely brief — a few words only',
+  competitive: 'competitive and motivating, framing meals as fuel to win the day',
 };
 
 interface PersonalizeResult {

@@ -12,8 +12,10 @@ import { todayKey, zustandStorage } from '../services/storage';
 import type {
   Adjustment,
   CoachMessage,
+  CoachTone,
   DailyLog,
   FoodInfo,
+  Measurement,
   MealItem,
   OnboardingProfile,
   Plan,
@@ -42,6 +44,10 @@ interface AppState {
   // Phase 3 — local food & lifestyle
   ownedIngredients: string[];
 
+  // Phase 4 — retention & behaviour change
+  measurements: Record<string, Measurement>; // keyed by YYYY-MM-DD
+  repairsCompleted: number;
+
   // auth
   signIn: (email: string, name: string, provider: User['provider']) => void;
   acceptConsent: () => void;
@@ -68,6 +74,11 @@ interface AppState {
   ) => Promise<void>;
   replaceMeal: (day: Weekday, slot: MealItem['slot'], food: FoodInfo) => void;
   setOwnedIngredients: (list: string[]) => void;
+
+  // Phase 4 actions
+  saveMeasurement: (m: Measurement) => void;
+  recordRepairCompleted: () => void;
+  setCoachTone: (tone: CoachTone) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -83,6 +94,8 @@ export const useAppStore = create<AppState>()(
       adjustments: [],
       chat: [],
       ownedIngredients: [],
+      measurements: {},
+      repairsCompleted: 0,
 
       signIn: (email, name, provider) => {
         // Demo auth: any credentials create/return a local user.
@@ -116,6 +129,8 @@ export const useAppStore = create<AppState>()(
           adjustments: [],
           chat: [],
           ownedIngredients: [],
+          measurements: {},
+          repairsCompleted: 0,
         }),
 
       setProfile: (p) => set({ profile: p }),
@@ -210,6 +225,18 @@ export const useAppStore = create<AppState>()(
       },
 
       setOwnedIngredients: (list) => set({ ownedIngredients: list }),
+
+      saveMeasurement: (m) =>
+        set({ measurements: { ...get().measurements, [m.date]: { ...get().measurements[m.date], ...m } } }),
+
+      recordRepairCompleted: () =>
+        set({ repairsCompleted: get().repairsCompleted + 1 }),
+
+      setCoachTone: (tone) => {
+        const p = get().profile;
+        if (!p) return;
+        set({ profile: { ...p, coachTone: tone } });
+      },
     }),
     {
       name: 'fitplan-store-v1',
@@ -223,6 +250,8 @@ export const useAppStore = create<AppState>()(
         adjustments: s.adjustments,
         chat: s.chat,
         ownedIngredients: s.ownedIngredients,
+        measurements: s.measurements,
+        repairsCompleted: s.repairsCompleted,
       }),
       onRehydrateStorage: () => (state) => {
         // Mark hydrated so the router can gate on real state, not the initial blank.

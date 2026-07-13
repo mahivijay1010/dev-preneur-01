@@ -11,8 +11,20 @@ import type { RepairResult, RepairSituation } from '@/types';
 // Plan Repair — the app repairs the day instead of showing failure.
 export default function Repair() {
   const router = useRouter();
-  const { plan, profile, updateTodayLog } = useAppStore();
+  const { plan, profile, updateTodayLog, recordRepairCompleted } = useAppStore();
   const [result, setResult] = useState<RepairResult | null>(null);
+  const [recorded, setRecorded] = useState(false);
+
+  // Count the repaired day once (drives the "First repaired day" milestone),
+  // then return to Today.
+  const finishRepair = (opts?: { markWorkoutDone?: boolean }) => {
+    if (opts?.markWorkoutDone) updateTodayLog({ workoutCompleted: true });
+    if (!recorded) {
+      recordRepairCompleted();
+      setRecorded(true);
+    }
+    router.back();
+  };
 
   if (!plan || !profile) {
     return (
@@ -101,14 +113,11 @@ export default function Repair() {
           {result.workout && (
             <Button
               label="Mark this session done"
-              onPress={() => {
-                updateTodayLog({ workoutCompleted: true });
-                router.back();
-              }}
+              onPress={() => finishRepair({ markWorkoutDone: true })}
             />
           )}
           <Button label="Choose something else" variant="ghost" onPress={() => setResult(null)} />
-          <Button label="Done" variant="ghost" onPress={() => router.back()} />
+          <Button label="Done" variant="ghost" onPress={() => finishRepair()} />
         </>
       )}
     </Screen>
