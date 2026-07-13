@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "FitPlan",
+    "slug": "fitplan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "fitplan",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitplan.app"
+    },
+    "android": {
+      "package": "com.fitplan.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#22D3EE"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
