@@ -60,6 +60,19 @@ Without a key the app runs fully offline on deterministic templates.
 > in production the Claude call must be proxied through your own backend so the
 > key is never shipped to devices.
 
+## What's built (Phase 2 — Adaptive coaching)
+
+| Spec area | Where |
+|---|---|
+| **Plan Repair** (missed workout, ate too much, travelling, no gym, 15 min, tired, restaurant, no food) — repairs the day instead of showing failure | [app/repair.tsx](app/repair.tsx), [src/engine/planRepair.ts](src/engine/planRepair.ts) |
+| **Weekly review** (weight, waist, workouts, strength, hunger, energy, sleep, meal difficulty, injury, satisfaction) | [app/weekly-review.tsx](app/weekly-review.tsx) |
+| **Automatic adjustments** — gradual, using rolling averages + a minimum observation window; never reacts to a single day | [src/engine/adjustments.ts](src/engine/adjustments.ts) |
+| **AI coach chat** — grounded in the user's plan and approved catalogs, refuses to diagnose; Claude-backed with a deterministic fallback | [app/(tabs)/coach.tsx](app/(tabs)/coach.tsx), [src/services/coach.ts](src/services/coach.ts) |
+
+Safeguards worth noting: calorie changes require ≥2 weekly reviews and are capped
+at 150 kcal/step; the coach is hard-constrained to approved foods/exercises and
+told never to invent numbers or give medical diagnoses.
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan

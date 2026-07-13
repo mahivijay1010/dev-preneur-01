@@ -47,6 +47,14 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <Icon label="📈" focused={focused} />,
         }}
       />
+
+      <Tabs.Screen
+        name="coach"
+        options={{
+          title: 'Coach',
+          tabBarIcon: ({ focused }) => <Icon label="💬" focused={focused} />,
+        }}
+      />
       <Tabs.Screen
         name="profile"
         options={{

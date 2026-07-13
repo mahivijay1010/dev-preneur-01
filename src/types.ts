@@ -120,3 +120,63 @@ export interface DailyLog {
   proteinG?: number; // running total logged for the day
   mealsLogged?: string[]; // meal slot keys checked off
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2 — Adaptive coaching
+// ---------------------------------------------------------------------------
+
+// The situations a user can pick from the Plan Repair flow.
+export type RepairSituation =
+  | 'missed_workout'
+  | 'ate_too_much'
+  | 'travelling'
+  | 'no_gym'
+  | 'only_15_min'
+  | 'feeling_tired'
+  | 'restaurant_meal'
+  | 'no_planned_food';
+
+// A repaired day the app offers instead of showing failure.
+export interface RepairResult {
+  situation: RepairSituation;
+  createdAt: string;
+  title: string;
+  message: string; // reassuring, tone-matched summary
+  workout?: WorkoutDay; // a replacement/shortened session when relevant
+  mealSwaps?: { slot: MealItem['slot']; from: string; to: string }[];
+  guidance: string[]; // concrete bullet actions
+  weeklyTargetSafe: boolean; // is the weekly workout target still achievable?
+}
+
+// Every-7-days check-in used to drive automatic adjustments.
+export interface WeeklyReview {
+  id: string;
+  weekStart: string; // YYYY-MM-DD
+  createdAt: string;
+  avgWeightKg: number | null;
+  waistCm?: number;
+  workoutsCompleted: number; // out of planned
+  workoutsPlanned: number;
+  strengthImproved: boolean;
+  hunger: 1 | 2 | 3 | 4 | 5;
+  energy: 1 | 2 | 3 | 4 | 5;
+  sleep: 1 | 2 | 3 | 4 | 5;
+  mealDifficulty: 1 | 2 | 3 | 4 | 5; // 5 = very hard to follow
+  painOrInjury: boolean;
+  satisfaction: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface Adjustment {
+  id: string;
+  createdAt: string;
+  reviewId: string;
+  calorieDelta: number; // signed kcal change applied to the plan
+  changes: string[]; // human-readable list of what changed and why
+}
+
+export interface CoachMessage {
+  id: string;
+  role: 'user' | 'coach';
+  text: string;
+  createdAt: string;
+}

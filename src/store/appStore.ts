@@ -5,10 +5,19 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { applyAdjustment, decideAdjustment } from '../engine/adjustments';
 import { generateBasePlan } from '../engine/generatePlan';
 import { personalizePlan } from '../services/claude';
 import { todayKey, zustandStorage } from '../services/storage';
-import type { DailyLog, OnboardingProfile, Plan, User } from '../types';
+import type {
+  Adjustment,
+  CoachMessage,
+  DailyLog,
+  OnboardingProfile,
+  Plan,
+  User,
+  WeeklyReview,
+} from '../types';
 
 function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -21,6 +30,11 @@ interface AppState {
   plan: Plan | null;
   logs: Record<string, DailyLog>; // keyed by YYYY-MM-DD
   generating: boolean;
+
+  // Phase 2 — adaptive coaching
+  reviews: WeeklyReview[];
+  adjustments: Adjustment[];
+  chat: CoachMessage[];
 
   // auth
   signIn: (email: string, name: string, provider: User['provider']) => void;
@@ -35,6 +49,12 @@ interface AppState {
   // tracking
   updateTodayLog: (patch: Partial<DailyLog>) => void;
   getLog: (date: string) => DailyLog | undefined;
+
+  // Phase 2 actions
+  submitWeeklyReview: (
+    review: Omit<WeeklyReview, 'id' | 'createdAt'>,
+  ) => Adjustment | null;
+  addChatMessage: (msg: Omit<CoachMessage, 'id' | 'createdAt'>) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -46,6 +66,9 @@ export const useAppStore = create<AppState>()(
       plan: null,
       logs: {},
       generating: false,
+      reviews: [],
+      adjustments: [],
+      chat: [],
 
       signIn: (email, name, provider) => {
         // Demo auth: any credentials create/return a local user.
@@ -69,7 +92,16 @@ export const useAppStore = create<AppState>()(
         set({ user: { ...u, consentAcceptedAt: new Date().toISOString() } });
       },
 
-      signOut: () => set({ user: null, profile: null, plan: null, logs: {} }),
+      signOut: () =>
+        set({
+          user: null,
+          profile: null,
+          plan: null,
+          logs: {},
+          reviews: [],
+          adjustments: [],
+          chat: [],
+        }),
 
       setProfile: (p) => set({ profile: p }),
 
@@ -97,6 +129,38 @@ export const useAppStore = create<AppState>()(
       },
 
       getLog: (date) => get().logs[date],
+
+      submitWeeklyReview: (input) => {
+        const { profile, plan } = get();
+        const review: WeeklyReview = {
+          ...input,
+          id: uid('rev'),
+          createdAt: new Date().toISOString(),
+        };
+        const reviews = [...get().reviews, review];
+        set({ reviews });
+
+        if (!profile || !plan) return null;
+        // Compute and apply a conservative adjustment from the full review history.
+        const decision = decideAdjustment(profile, plan, reviews);
+        const { plan: nextPlan, adjustment } = applyAdjustment(
+          plan,
+          decision,
+          review.id,
+          uid('adj'),
+          new Date().toISOString(),
+        );
+        set({ plan: nextPlan, adjustments: [...get().adjustments, adjustment] });
+        return adjustment;
+      },
+
+      addChatMessage: (msg) =>
+        set({
+          chat: [
+            ...get().chat,
+            { ...msg, id: uid('msg'), createdAt: new Date().toISOString() },
+          ],
+        }),
     }),
     {
       name: 'fitplan-store-v1',
@@ -106,6 +170,9 @@ export const useAppStore = create<AppState>()(
         profile: s.profile,
         plan: s.plan,
         logs: s.logs,
+        reviews: s.reviews,
+        adjustments: s.adjustments,
+        chat: s.chat,
       }),
       onRehydrateStorage: () => (state) => {
         // Mark hydrated so the router can gate on real state, not the initial blank.

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -70,6 +71,7 @@ function Scale({
 }
 
 export default function Today() {
+  const router = useRouter();
   const { plan, profile, user, updateTodayLog, logs } = useAppStore();
   const day = currentWeekday();
   const log: DailyLog = logs[todayKey()] ?? { date: todayKey() };
@@ -119,6 +121,16 @@ export default function Today() {
           {plan.macros.proteinG} g protein
         </Subtitle>
       </View>
+
+      {/* Plan Repair entry — the day gets fixed, never marked a failure. */}
+      <Pressable style={styles.repairBanner} onPress={() => router.push('/repair')}>
+        <Text style={styles.repairIcon}>🛠️</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.repairTitle}>Day not going to plan?</Text>
+          <Text style={styles.repairSub}>Tap to repair it — missed workout, travel, tired…</Text>
+        </View>
+        <Text style={styles.repairArrow}>›</Text>
+      </Pressable>
 
       {/* Today's workout */}
       <Card>
@@ -221,6 +233,20 @@ function round1(n: number) {
 
 const styles = StyleSheet.create({
   hi: { color: colors.textDim, fontSize: font.body },
+  repairBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  repairIcon: { fontSize: 24 },
+  repairTitle: { color: colors.text, fontWeight: '700', fontSize: font.body },
+  repairSub: { color: colors.textDim, fontSize: font.tiny },
+  repairArrow: { color: colors.accent, fontSize: 28, fontWeight: '700' },
   focus: { color: colors.primary, fontWeight: '700', fontSize: font.body },
   exLine: { color: colors.text, fontSize: font.small, lineHeight: 21 },
   doneBtn: {

@@ -1,7 +1,8 @@
+import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Card, Screen, SectionHeader, StatTile, Subtitle, Title } from '@/components/ui';
+import { Button, Card, Screen, SectionHeader, StatTile, Subtitle, Title } from '@/components/ui';
 import { summarize } from '@/engine/progress';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
@@ -15,8 +16,10 @@ function Bar({ pct, color }: { pct: number; color: string }) {
 }
 
 export default function Progress() {
-  const { logs, profile, plan } = useAppStore();
+  const router = useRouter();
+  const { logs, profile, plan, adjustments } = useAppStore();
   const s = useMemo(() => summarize(logs, profile, plan), [logs, profile, plan]);
+  const lastAdjustment = adjustments[adjustments.length - 1];
 
   if (!profile) {
     return (
@@ -88,6 +91,21 @@ export default function Progress() {
         <Bar pct={s.weeklyConsistencyPct} color={colors.success} />
         <Text style={styles.pct}>{s.weeklyConsistencyPct}% of days logged this week</Text>
       </Card>
+
+      <Card>
+        <SectionHeader>Weekly review</SectionHeader>
+        <Text style={styles.pct}>
+          Check in every 7 days so your plan adapts to your results.
+        </Text>
+        {lastAdjustment && (
+          <Text style={styles.lastAdj}>
+            Last update: {lastAdjustment.calorieDelta === 0
+              ? 'no calorie change'
+              : `${lastAdjustment.calorieDelta > 0 ? '+' : ''}${lastAdjustment.calorieDelta} kcal`}
+          </Text>
+        )}
+        <Button label="Start weekly review" onPress={() => router.push('/weekly-review')} />
+      </Card>
     </Screen>
   );
 }
@@ -102,4 +120,5 @@ const styles = StyleSheet.create({
   },
   barFill: { height: '100%', borderRadius: radius.pill },
   pct: { color: colors.textDim, fontSize: font.small },
+  lastAdj: { color: colors.primary, fontSize: font.small, fontWeight: '600' },
 });
