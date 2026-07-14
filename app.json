@@ -29,6 +29,13 @@
         {
           "color": "#22D3EE"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FitPlan uses your photos to estimate meals and track progress pictures.",
+          "cameraPermission": "FitPlan uses the camera to log meals, scan menus, and check exercise form."
+        }
       ]
     ],
     "experiments": {

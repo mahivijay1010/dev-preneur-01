@@ -55,6 +55,7 @@ export default function Restaurant() {
         returnKeyType="search"
       />
       <Button label="Evaluate dish" onPress={() => run(dish)} />
+      <Button label="📷 Scan a menu instead" variant="ghost" onPress={() => router.push('/menu-scanner')} />
 
       {!result && (
         <View style={styles.examples}>

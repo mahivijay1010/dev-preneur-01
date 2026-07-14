@@ -180,6 +180,73 @@ export interface Milestone {
   achievedHint?: string; // e.g. "5/5" progress text
 }
 
+// ---------------------------------------------------------------------------
+// Phase 5 — Camera & sensor features
+// ---------------------------------------------------------------------------
+
+export type Confidence = 'low' | 'medium' | 'high';
+
+export interface DetectedFood {
+  name: string;
+  portion: string; // e.g. "1 cup", "150 g"
+  calories: number;
+  proteinG: number;
+}
+
+// Result of analysing a meal photo. Always user-editable before logging.
+export interface FoodPhotoAnalysis {
+  foods: DetectedFood[];
+  calorieRange: [number, number];
+  proteinG: number;
+  confidence: Confidence;
+  source: 'ai' | 'manual';
+}
+
+export interface MenuRecommendation {
+  dish: string;
+  reason: string;
+  estCalories: [number, number];
+  rank: number;
+}
+
+export interface MenuScanResult {
+  recommendations: MenuRecommendation[];
+  avoid: string[];
+  confidence: Confidence;
+  source: 'ai' | 'manual';
+}
+
+// Qualitative progress-photo read. Deliberately avoids medical-grade body-fat %.
+export interface ProgressPhotoAnalysis {
+  observations: string[];
+  encouragement: string;
+  confidence: Confidence;
+}
+
+export interface ProgressPhoto {
+  id: string;
+  date: string;
+  uri: string;
+  pose: 'front' | 'side' | 'back';
+}
+
+export type FormExercise =
+  | 'squat'
+  | 'pushup'
+  | 'lunge'
+  | 'plank'
+  | 'shoulder_press'
+  | 'bicep_curl';
+
+export interface FormFeedback {
+  exercise: FormExercise;
+  goodPoints: string[];
+  corrections: string[];
+  postureWarnings: string[];
+  confidence: Confidence;
+  source: 'ai' | 'manual';
+}
+
 export interface Macros {
   calories: number; // midpoint target
   calorieRange: [number, number];

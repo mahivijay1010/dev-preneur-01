@@ -19,6 +19,7 @@ import type {
   MealItem,
   OnboardingProfile,
   Plan,
+  ProgressPhoto,
   User,
   WeeklyReview,
   Weekday,
@@ -47,6 +48,9 @@ interface AppState {
   // Phase 4 — retention & behaviour change
   measurements: Record<string, Measurement>; // keyed by YYYY-MM-DD
   repairsCompleted: number;
+
+  // Phase 5 — camera & sensor features
+  progressPhotos: ProgressPhoto[];
 
   // auth
   signIn: (email: string, name: string, provider: User['provider']) => void;
@@ -79,6 +83,11 @@ interface AppState {
   saveMeasurement: (m: Measurement) => void;
   recordRepairCompleted: () => void;
   setCoachTone: (tone: CoachTone) => void;
+
+  // Phase 5 actions
+  addProgressPhoto: (photo: Omit<ProgressPhoto, 'id'>) => void;
+  removeProgressPhoto: (id: string) => void;
+  logPhotoMeal: (proteinG: number) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -96,6 +105,7 @@ export const useAppStore = create<AppState>()(
       ownedIngredients: [],
       measurements: {},
       repairsCompleted: 0,
+      progressPhotos: [],
 
       signIn: (email, name, provider) => {
         // Demo auth: any credentials create/return a local user.
@@ -131,6 +141,7 @@ export const useAppStore = create<AppState>()(
           ownedIngredients: [],
           measurements: {},
           repairsCompleted: 0,
+          progressPhotos: [],
         }),
 
       setProfile: (p) => set({ profile: p }),
@@ -237,6 +248,23 @@ export const useAppStore = create<AppState>()(
         if (!p) return;
         set({ profile: { ...p, coachTone: tone } });
       },
+
+      addProgressPhoto: (photo) =>
+        set({ progressPhotos: [...get().progressPhotos, { ...photo, id: uid('photo') }] }),
+
+      removeProgressPhoto: (id) =>
+        set({ progressPhotos: get().progressPhotos.filter((p) => p.id !== id) }),
+
+      logPhotoMeal: (proteinG) => {
+        const key = todayKey();
+        const existing = get().logs[key] ?? { date: key };
+        set({
+          logs: {
+            ...get().logs,
+            [key]: { ...existing, proteinG: Math.max(0, (existing.proteinG ?? 0) + proteinG) },
+          },
+        });
+      },
     }),
     {
       name: 'fitplan-store-v1',
@@ -252,6 +280,7 @@ export const useAppStore = create<AppState>()(
         ownedIngredients: s.ownedIngredients,
         measurements: s.measurements,
         repairsCompleted: s.repairsCompleted,
+        progressPhotos: s.progressPhotos,
       }),
       onRehydrateStorage: () => (state) => {
         // Mark hydrated so the router can gate on real state, not the initial blank.

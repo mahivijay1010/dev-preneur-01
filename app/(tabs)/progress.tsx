@@ -157,6 +157,7 @@ export default function Progress() {
         <SectionHeader>Non-scale progress</SectionHeader>
         <Text style={styles.pct}>Waist, chest, arms, hips, resting HR, clothing fit & capacity.</Text>
         <Button label="Log measurements" variant="ghost" onPress={() => router.push('/measurements')} />
+        <Button label="📸 Progress photos" variant="ghost" onPress={() => router.push('/progress-photo')} />
       </Card>
 
       <Card>

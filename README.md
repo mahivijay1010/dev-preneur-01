@@ -102,6 +102,26 @@ The **Progress** tab now leads with the adherence score, then insights,
 milestones, and a non-scale measurements entry. Change your coaching personality
 any time under the **Profile** tab.
 
+## What's built (Phase 5 — Camera & sensor features)
+
+Uses `expo-image-picker` (camera + library; works on web via the file dialog)
+and a Claude **vision** service. Everything degrades to manual entry when no API
+key is set, and every result is presented as an editable estimate.
+
+| Spec area | Where |
+|---|---|
+| **Food camera** — detected foods, portions, calorie range, protein, confidence, all editable before logging | [app/food-camera.tsx](app/food-camera.tsx), [src/services/vision.ts](src/services/vision.ts) |
+| **Menu scanner** — photograph a menu/buffet/shelf → best options ranked for your target + what to skip | [app/menu-scanner.tsx](app/menu-scanner.tsx) |
+| **Progress photo analysis** — timeline gallery + gentle qualitative observations (never a body-fat %) | [app/progress-photo.tsx](app/progress-photo.tsx) |
+| **Exercise form assistance** — squat/push-up/lunge/plank/shoulder press/bicep curl: expert cues, rep counter, tempo guide, and photo-based AI feedback (never diagnoses) | [app/form-check.tsx](app/form-check.tsx), [src/data/formCues.ts](src/data/formCues.ts) |
+
+Entry points: **Log meal** / **Check my form** on the Today tab, **Progress
+photos** on the Progress tab, and **Scan a menu** in Restaurant mode.
+
+> Live pose tracking (real-time rep/ROM analysis) needs an on-device ML model
+> and is out of scope for this build — form assistance is photo-based plus an
+> expert cue sheet, rep counter, and tempo metronome.
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan

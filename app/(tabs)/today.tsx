@@ -155,11 +155,19 @@ export default function Today() {
             {log.workoutCompleted ? '✓ Workout completed' : 'Mark workout complete'}
           </Text>
         </Pressable>
+        <Pressable style={styles.cameraLink} onPress={() => router.push('/form-check')}>
+          <Text style={styles.cameraLinkText}>🎥 Check my form</Text>
+        </Pressable>
       </Card>
 
       {/* Today's meals */}
       <Card>
-        <SectionHeader>Today's meals</SectionHeader>
+        <View style={styles.mealsHead}>
+          <SectionHeader>Today's meals</SectionHeader>
+          <Pressable style={styles.cameraChip} onPress={() => router.push('/food-camera')}>
+            <Text style={styles.cameraChipText}>📷 Log meal</Text>
+          </Pressable>
+        </View>
         {meals?.items.map((m) => {
           const checked = mealsLogged.has(m.slot);
           return (
@@ -260,6 +268,18 @@ const styles = StyleSheet.create({
   },
   doneBtnOn: { backgroundColor: colors.success, borderColor: colors.success },
   doneText: { color: colors.text, fontWeight: '700' },
+  cameraLink: { alignItems: 'center', paddingVertical: 8 },
+  cameraLinkText: { color: colors.primary, fontWeight: '700', fontSize: font.small },
+  mealsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cameraChip: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.primaryDim,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  cameraChipText: { color: colors.primary, fontWeight: '700', fontSize: font.tiny },
   mealRow: {
     flexDirection: 'row',
     alignItems: 'center',
