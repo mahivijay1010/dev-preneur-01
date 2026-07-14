@@ -247,6 +247,35 @@ export interface FormFeedback {
   source: 'ai' | 'manual';
 }
 
+// ---------------------------------------------------------------------------
+// Phase 7 — Fitness Digital Twin
+// ---------------------------------------------------------------------------
+
+export interface TwinEstimate<T> {
+  value: T;
+  confidence: Confidence;
+  basis: string; // plain-language explanation of how it was derived
+}
+
+export interface TwinModel {
+  dataDays: number; // span of data available
+  ready: boolean; // enough data to be meaningful
+  maintenanceCalories: TwinEstimate<number | null>;
+  recovery: TwinEstimate<{ avgSleep: number | null; avgEnergy: number | null; quality: 'poor' | 'ok' | 'good' }>;
+  strength: TwinEstimate<{ improvingWeeks: number; trend: 'up' | 'flat' | 'unknown' }>;
+  dropoutRisk: TwinEstimate<{ score: number; level: 'low' | 'moderate' | 'high'; triggers: string[] }>;
+  calorieResponse: TwinEstimate<{ sensitivity: 'low' | 'normal' | 'high' | 'unknown' }>;
+  adherenceDrivers: string[];
+  preferredCoaching: CoachTone;
+}
+
+export interface TwinAdjustment {
+  calorieDelta: number;
+  explanation: string; // the explainable, spec-style narrative
+  factors: string[];
+  confidence: Confidence;
+}
+
 export interface Macros {
   calories: number; // midpoint target
   calorieRange: [number, number];

@@ -20,6 +20,7 @@ import type {
   OnboardingProfile,
   Plan,
   ProgressPhoto,
+  TwinAdjustment,
   User,
   WeeklyReview,
   Weekday,
@@ -88,6 +89,9 @@ interface AppState {
   addProgressPhoto: (photo: Omit<ProgressPhoto, 'id'>) => void;
   removeProgressPhoto: (id: string) => void;
   logPhotoMeal: (proteinG: number) => void;
+
+  // Phase 7 actions
+  applyTwinAdjustment: (rec: TwinAdjustment) => Adjustment | null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -264,6 +268,20 @@ export const useAppStore = create<AppState>()(
             [key]: { ...existing, proteinG: Math.max(0, (existing.proteinG ?? 0) + proteinG) },
           },
         });
+      },
+
+      applyTwinAdjustment: (rec) => {
+        const plan = get().plan;
+        if (!plan || rec.calorieDelta === 0) return null;
+        const { plan: nextPlan, adjustment } = applyAdjustment(
+          plan,
+          { calorieDelta: rec.calorieDelta, changes: [rec.explanation, ...rec.factors] },
+          'digital-twin',
+          uid('adj'),
+          new Date().toISOString(),
+        );
+        set({ plan: nextPlan, adjustments: [...get().adjustments, adjustment] });
+        return adjustment;
       },
     }),
     {

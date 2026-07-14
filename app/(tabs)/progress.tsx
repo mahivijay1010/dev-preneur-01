@@ -90,6 +90,18 @@ export default function Progress() {
         />
       </View>
 
+      {/* Digital Twin — the moat */}
+      <Pressable onPress={() => router.push('/digital-twin')}>
+        <View style={styles.twinBanner}>
+          <Text style={styles.twinIcon}>🧬</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.twinTitle}>Your Digital Twin</Text>
+            <Text style={styles.twinSub}>Learned insights & explainable adjustments</Text>
+          </View>
+          <Text style={styles.twinArrow}>›</Text>
+        </View>
+      </Pressable>
+
       {/* Adherence score */}
       <Card>
         <View style={styles.scoreRow}>
@@ -227,4 +239,18 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   msIcon: { fontSize: 26 },
   msLocked: { opacity: 0.4 },
+  twinBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.md,
+    padding: spacing.md,
+  },
+  twinIcon: { fontSize: 28 },
+  twinTitle: { color: colors.text, fontWeight: '800', fontSize: font.h3 },
+  twinSub: { color: colors.textDim, fontSize: font.tiny },
+  twinArrow: { color: colors.accent, fontSize: 28, fontWeight: '700' },
 });

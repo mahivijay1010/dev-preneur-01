@@ -122,6 +122,29 @@ photos** on the Progress tab, and **Scan a menu** in Restaurant mode.
 > and is out of scope for this build — form assistance is photo-based plus an
 > expert cue sheet, rep counter, and tempo metronome.
 
+## What's built (Phase 7 — Fitness Digital Twin)
+
+The long-term moat: a per-user model learned entirely from logged data, plus
+**explainable** adjustments. Every estimate carries a confidence and the basis
+it was derived from — thin data yields low confidence, never false precision.
+
+| Learns | How |
+|---|---|
+| **Maintenance calories** | Weight trend (edge-averaged) vs plan intake × 7700 kcal/kg |
+| **Recovery pattern** | Average sleep + energy → poor/ok/good |
+| **Strength progression** | Weekly-review strength gains over time |
+| **Dropout risk** | Logging momentum (last 7d vs prior 7d) + satisfaction/completion |
+| **Response to calorie changes** | Weight slope before vs after each adjustment |
+| **Adherence drivers** | Data-grounded correlations (energy↔training, logging↔protein) |
+| **Preferred coaching style** | From the user's chosen tone |
+
+The headline is the **explainable adjustment** — e.g. *"Your average weight
+decreased faster than the target range over the last two weeks while your energy
+and training performance declined. Your daily target has been increased by 120
+kcal to keep progress sustainable."* — applied to the plan with one tap.
+See [src/engine/digitalTwin.ts](src/engine/digitalTwin.ts) and
+[app/digital-twin.tsx](app/digital-twin.tsx) (open it from the 🧬 banner on Progress).
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan
