@@ -145,6 +145,31 @@ kcal to keep progress sustainable."* — applied to the plan with one tap.
 See [src/engine/digitalTwin.ts](src/engine/digitalTwin.ts) and
 [app/digital-twin.tsx](app/digital-twin.tsx) (open it from the 🧬 banner on Progress).
 
+## What's built (Phase 6 — Integrations & professional support)
+
+| Spec area | Where |
+|---|---|
+| **Wearables & health platforms** — Apple Health, Health Connect, Fitbit, Garmin, smart scales behind one provider interface; a **simulated device** demonstrates the full steps/sleep/weight/HR/active-calorie import → log pipeline | [src/services/wearables.ts](src/services/wearables.ts), [app/devices.tsx](app/devices.tsx) |
+| **Human expert support** — pick a trainer/dietitian/physio/coach, request a plan review grounded in your data, and message them; safety concerns get flagged | [src/data/experts.ts](src/data/experts.ts), [app/experts.tsx](app/experts.tsx) |
+| **B2B coach dashboard** — roster with adherence, progress, at-risk clients, and safety alerts for gyms/trainers/corporate wellness | [app/coach-dashboard.tsx](app/coach-dashboard.tsx) |
+
+Entry points: **Devices & health apps** + **Expert support** on Profile,
+**Human expert** on the Coach tab, and **B2B coach dashboard** in the Admin panel.
+
+> **Honest scope:** the real wearable SDKs (HealthKit, Health Connect, Fitbit/
+> Garmin OAuth, BLE scales) need a native build and can't run in this JS/web
+> environment, so those providers are marked "Native build" and disabled behind
+> a clean interface. The simulated provider exercises the same import pipeline so
+> the flow is fully demonstrable. Wearable active-calorie estimates are imported
+> for reference only and never fed into calorie targets.
+
+## Roadmap status
+
+All 7 phases of [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.md) are implemented:
+Phase 1 (Core MVP) · Phase 2 (Adaptive coaching) · Phase 3 (Local food
+intelligence) · Phase 4 (Retention & behaviour) · Phase 5 (Camera & sensors) ·
+Phase 6 (Integrations & professional support) · Phase 7 (Digital Twin).
+
 ## Not in Phase 1 (per spec)
 Social feed, trainer marketplace, food-image recognition, form analysis,
 wearables, gamification, live coaching. Phases 2–7 (adaptive coaching, plan

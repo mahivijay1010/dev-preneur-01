@@ -276,6 +276,66 @@ export interface TwinAdjustment {
   confidence: Confidence;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 6 — Integrations & professional support
+// ---------------------------------------------------------------------------
+
+export type WearableId =
+  | 'apple_health'
+  | 'health_connect'
+  | 'fitbit'
+  | 'garmin'
+  | 'smart_scale'
+  | 'simulated';
+
+export interface WearableProviderInfo {
+  id: WearableId;
+  name: string;
+  icon: string;
+  // Native SDK required — false for real providers in this build (honest stub).
+  available: boolean;
+  imports: string[]; // e.g. ['steps','sleep','weight']
+  note: string;
+}
+
+export type ExpertKind = 'trainer' | 'dietitian' | 'physio' | 'coach';
+
+export interface Expert {
+  id: string;
+  name: string;
+  kind: ExpertKind;
+  credential: string;
+  specialty: string;
+  icon: string;
+}
+
+export interface ExpertMessage {
+  id: string;
+  from: 'user' | 'expert';
+  text: string;
+  createdAt: string;
+}
+
+export interface PlanReview {
+  id: string;
+  expertId: string;
+  createdAt: string;
+  summary: string;
+  suggestions: string[];
+}
+
+// A client row in the B2B coach dashboard (demo roster).
+export interface CoachClient {
+  id: string;
+  name: string;
+  goal: Goal;
+  adherence: number; // 0-100
+  weeklyWorkouts: string; // e.g. "3/4"
+  weightTrendKg: number; // signed change this month
+  lastActiveDays: number;
+  safetyFlag?: string; // e.g. reported knee pain
+}
+
 export interface Macros {
   calories: number; // midpoint target
   calorieRange: [number, number];

@@ -5,10 +5,12 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { EXPERTS, expertReply, generatePlanReview } from '../data/experts';
 import { applyAdjustment, decideAdjustment } from '../engine/adjustments';
 import { generateBasePlan } from '../engine/generatePlan';
 import { personalizePlan } from '../services/claude';
 import { todayKey, zustandStorage } from '../services/storage';
+import { mergeImportIntoLogs, simulateImport } from '../services/wearables';
 import type {
   Adjustment,
   CoachMessage,
@@ -19,10 +21,13 @@ import type {
   MealItem,
   OnboardingProfile,
   Plan,
+  ExpertMessage,
+  PlanReview,
   ProgressPhoto,
   TwinAdjustment,
   User,
   WeeklyReview,
+  WearableId,
   Weekday,
 } from '../types';
 
@@ -52,6 +57,12 @@ interface AppState {
 
   // Phase 5 — camera & sensor features
   progressPhotos: ProgressPhoto[];
+
+  // Phase 6 — integrations & professional support
+  connectedWearables: WearableId[];
+  assignedExpertId: string | null;
+  expertMessages: ExpertMessage[];
+  planReviews: PlanReview[];
 
   // auth
   signIn: (email: string, name: string, provider: User['provider']) => void;
@@ -92,6 +103,13 @@ interface AppState {
 
   // Phase 7 actions
   applyTwinAdjustment: (rec: TwinAdjustment) => Adjustment | null;
+
+  // Phase 6 actions
+  connectWearable: (id: WearableId) => number; // returns days imported
+  disconnectWearable: (id: WearableId) => void;
+  assignExpert: (expertId: string) => void;
+  sendExpertMessage: (text: string) => void;
+  requestPlanReview: () => PlanReview | null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -110,6 +128,10 @@ export const useAppStore = create<AppState>()(
       measurements: {},
       repairsCompleted: 0,
       progressPhotos: [],
+      connectedWearables: [],
+      assignedExpertId: null,
+      expertMessages: [],
+      planReviews: [],
 
       signIn: (email, name, provider) => {
         // Demo auth: any credentials create/return a local user.
@@ -146,6 +168,10 @@ export const useAppStore = create<AppState>()(
           measurements: {},
           repairsCompleted: 0,
           progressPhotos: [],
+          connectedWearables: [],
+          assignedExpertId: null,
+          expertMessages: [],
+          planReviews: [],
         }),
 
       setProfile: (p) => set({ profile: p }),
@@ -283,6 +309,68 @@ export const useAppStore = create<AppState>()(
         set({ plan: nextPlan, adjustments: [...get().adjustments, adjustment] });
         return adjustment;
       },
+
+      connectWearable: (id) => {
+        if (!get().connectedWearables.includes(id)) {
+          set({ connectedWearables: [...get().connectedWearables, id] });
+        }
+        // Only the simulated provider can actually import in this build.
+        if (id !== 'simulated') return 0;
+        const baseline = get().profile?.currentWeightKg ?? 75;
+        const imported = simulateImport(14, baseline);
+        set({ logs: mergeImportIntoLogs(get().logs, imported) });
+        return imported.length;
+      },
+
+      disconnectWearable: (id) =>
+        set({ connectedWearables: get().connectedWearables.filter((w) => w !== id) }),
+
+      assignExpert: (expertId) => {
+        set({ assignedExpertId: expertId });
+        const expert = EXPERTS.find((e) => e.id === expertId);
+        if (expert && get().expertMessages.length === 0) {
+          set({
+            expertMessages: [
+              {
+                id: uid('em'),
+                from: 'expert',
+                text: `Hi, I\'m ${expert.name}. I\'ll be supporting you as your ${expert.kind}. How can I help?`,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          });
+        }
+      },
+
+      sendExpertMessage: (text) => {
+        const expert = EXPERTS.find((e) => e.id === get().assignedExpertId);
+        if (!expert) return;
+        const now = new Date().toISOString();
+        const userMsg: ExpertMessage = { id: uid('em'), from: 'user', text, createdAt: now };
+        const reply: ExpertMessage = {
+          id: uid('em'),
+          from: 'expert',
+          text: expertReply(expert, text),
+          createdAt: now,
+        };
+        set({ expertMessages: [...get().expertMessages, userMsg, reply] });
+      },
+
+      requestPlanReview: () => {
+        const { profile, plan, reviews, assignedExpertId } = get();
+        const expert = EXPERTS.find((e) => e.id === assignedExpertId);
+        if (!expert || !profile || !plan) return null;
+        const review = generatePlanReview(
+          expert,
+          profile,
+          plan,
+          reviews,
+          uid('pr'),
+          new Date().toISOString(),
+        );
+        set({ planReviews: [...get().planReviews, review] });
+        return review;
+      },
     }),
     {
       name: 'fitplan-store-v1',
@@ -299,6 +387,10 @@ export const useAppStore = create<AppState>()(
         measurements: s.measurements,
         repairsCompleted: s.repairsCompleted,
         progressPhotos: s.progressPhotos,
+        connectedWearables: s.connectedWearables,
+        assignedExpertId: s.assignedExpertId,
+        expertMessages: s.expertMessages,
+        planReviews: s.planReviews,
       }),
       onRehydrateStorage: () => (state) => {
         // Mark hydrated so the router can gate on real state, not the initial blank.

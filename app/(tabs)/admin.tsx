@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Card, Screen, SectionHeader, StatTile, Subtitle, Title } from '@/components/ui';
+import { useRouter } from 'expo-router';
+
+import { Button, Card, Screen, SectionHeader, StatTile, Subtitle, Title } from '@/components/ui';
 import { EXERCISES } from '@/data/exercises';
 import { FOODS } from '@/data/foods';
 import { REGIONAL_FOODS } from '@/data/regionalFoods';
@@ -14,6 +16,7 @@ import { colors, font, radius, spacing } from '@/theme';
 type Section = 'exercises' | 'meals' | 'users' | 'plan' | 'safety';
 
 export default function Admin() {
+  const router = useRouter();
   const { user, profile, plan } = useAppStore();
   const [section, setSection] = useState<Section>('exercises');
 
@@ -38,6 +41,8 @@ export default function Admin() {
     <Screen>
       <Title>Admin panel</Title>
       <Subtitle>Manage catalogs, review plans, and monitor safety reports.</Subtitle>
+
+      <Button label="🏢 Open B2B coach dashboard" variant="ghost" onPress={() => router.push('/coach-dashboard')} />
 
       <View style={styles.tiles}>
         <StatTile label="Exercises" value={`${EXERCISES.length}`} />

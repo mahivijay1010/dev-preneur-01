@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ const SUGGESTIONS = [
 ];
 
 export default function Coach() {
+  const router = useRouter();
   const { chat, addChatMessage, profile, plan } = useAppStore();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -50,7 +52,12 @@ export default function Coach() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>AI Coach</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>AI Coach</Text>
+            <Pressable style={styles.humanBtn} onPress={() => router.push('/experts')}>
+              <Text style={styles.humanText}>🩺 Human expert</Text>
+            </Pressable>
+          </View>
           <Text style={styles.sub}>
             {isCoachAIEnabled() ? 'Grounded in your plan & approved data' : 'Offline mode — rule-based answers'}
           </Text>
@@ -115,6 +122,16 @@ export default function Coach() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { padding: spacing.lg, paddingBottom: spacing.sm },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  humanBtn: {
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  humanText: { color: colors.primary, fontWeight: '700', fontSize: font.tiny },
   title: { color: colors.text, fontSize: font.h1, fontWeight: '800' },
   sub: { color: colors.textDim, fontSize: font.small },
   messages: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.lg },

@@ -104,6 +104,9 @@ export default function Profile() {
         )}
       </Card>
 
+      <Button label="⌚ Devices & health apps" variant="ghost" onPress={() => router.push('/devices')} />
+      <Button label="🩺 Expert support" variant="ghost" onPress={() => router.push('/experts')} />
+
       <Button
         label="Regenerate my plan"
         variant="ghost"
