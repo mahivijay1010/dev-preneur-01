@@ -16,13 +16,14 @@ import {
 import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import { Button, Card, ChipGroup, PageHeader, ProgressRing, Screen, StatusPill } from '@/components/ui';
+import { Gradient } from '@/components/depth';
 import { Reveal } from '@/components/motion';
 import { ProteinPicker } from '@/components/ProteinPicker';
 import { goalLabel, recommendedProteinPerKg } from '@/engine/nutrition';
 import { isAIEnabled } from '@/services/claude';
 import { requestPermission, syncReminders } from '@/services/notifications';
 import { useAppStore } from '@/store/appStore';
-import { colors, font, radius, spacing } from '@/theme';
+import { colors, font, gradients, radius, spacing } from '@/theme';
 import type { CoachTone } from '@/types';
 
 export default function Profile() {
@@ -77,7 +78,7 @@ export default function Profile() {
       />
 
       <Reveal delay={50} style={[styles.accountHero, compact && styles.accountHeroCompact]}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text><View style={styles.onlineDot} /></View>
+        <View style={styles.avatar}><Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} /><Text style={styles.avatarText}>{initials}</Text><View style={styles.onlineDot} /></View>
         <View style={styles.accountCopy}>
           <Text style={styles.accountName}>{user?.name || 'FitPlan member'}</Text>
           <Text style={styles.accountEmail}>{user?.email || 'No email available'}</Text>
@@ -94,7 +95,7 @@ export default function Profile() {
         <Card tone="raised" style={styles.setupCard}>
           <View style={styles.cardHeader}>
             <View><Text style={styles.cardEyebrow}>PLAN FOUNDATION</Text><Text style={styles.cardTitle}>Your setup</Text></View>
-            <ProgressRing progress={completion} value={`${completion}%`} label="complete" size={88} />
+            <ProgressRing progress={completion} value={`${completion}%`} label="complete" size={88} gradient={gradients.primary} />
           </View>
           {profile ? (
             <View style={styles.setupRows}>

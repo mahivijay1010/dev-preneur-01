@@ -18,16 +18,18 @@ import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
 import { Button, Card, PageHeader, ProgressRing, Screen, StatusPill } from '@/components/ui';
 import { AnimatedNumber } from '@/components/motion';
+import { Gradient } from '@/components/depth';
 import { computeAdherence } from '@/engine/adherence';
 import { detectHabits } from '@/engine/habits';
 import { computeMilestones } from '@/engine/milestones';
 import { goalLabel } from '@/engine/nutrition';
 import { summarize } from '@/engine/progress';
 import { useAppStore } from '@/store/appStore';
-import { colors, font, radius, spacing } from '@/theme';
+import { colors, font, gradients, radius, spacing } from '@/theme';
 import type { DailyLog, HabitInsight } from '@/types';
 
 const BAND_COLOR = { building: colors.warning, solid: colors.primary, excellent: colors.success };
+const BAND_GRADIENT = { building: gradients.peach, solid: gradients.primary, excellent: gradients.success };
 const SEVERITY_COLOR: Record<HabitInsight['severity'], string> = {
   info: colors.textDim,
   suggestion: colors.accent,
@@ -80,7 +82,7 @@ export default function Progress() {
               <MiniStat label="Change" value={summary.weightChange !== null ? `${summary.weightChange > 0 ? '+' : ''}${summary.weightChange} kg` : 'No trend yet'} color={colors.peach} />
             </View>
           </View>
-          <ProgressRing progress={goalProgress} value={`${goalProgress}%`} label="to goal" size={compact ? 112 : 140} />
+          <ProgressRing progress={goalProgress} value={`${goalProgress}%`} label="to goal" size={compact ? 112 : 140} gradient={gradients.primary} />
         </View>
 
         <Card tone="raised" style={styles.chartCard}>
@@ -99,14 +101,17 @@ export default function Progress() {
           <Text style={styles.twinTitle}>Your plan learns from your real behavior.</Text>
           <Text style={styles.twinSub}>See the evidence behind recovery, calorie, and adherence recommendations.</Text>
         </View>
-        <View style={[styles.twinArrow, compact && styles.twinArrowCompact]}><ArrowUpRight size={20} color={colors.black} /></View>
+        <View style={[styles.twinArrow, compact && styles.twinArrowCompact]}>
+          <Gradient colors={gradients.accent} direction="diagonal" radius={radius.md} />
+          <View><ArrowUpRight size={20} color={colors.black} /></View>
+        </View>
       </Pressable>
 
       <View style={[styles.dashboardGrid, compact && styles.dashboardGridCompact]}>
         <Card tone="raised" style={styles.adherenceCard}>
           <View style={styles.scoreHeader}>
             <View><Text style={styles.cardEyebrow}>14-DAY BEHAVIOR SCORE</Text><Text style={styles.cardTitle}>Adherence</Text></View>
-            <ProgressRing progress={adherence.score} value={`${adherence.score}`} label="score" size={96} accent={BAND_COLOR[adherence.band]} />
+            <ProgressRing progress={adherence.score} value={`${adherence.score}`} label="score" size={96} accent={BAND_COLOR[adherence.band]} gradient={BAND_GRADIENT[adherence.band]} />
           </View>
           <Text style={styles.supportCopy}>{scoreMessage(adherence.band)}</Text>
           <View style={styles.componentList}>
@@ -282,7 +287,7 @@ const styles = StyleSheet.create({
   twinEyebrow: { color: colors.accent, fontSize: font.tiny, fontWeight: '900', letterSpacing: 1 },
   twinTitle: { color: colors.text, fontSize: font.h2, fontWeight: '900' },
   twinSub: { color: colors.textDim, fontSize: font.small, lineHeight: 20, maxWidth: 640 },
-  twinArrow: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent },
+  twinArrow: { width: 42, height: 42, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent, overflow: 'hidden' },
   twinArrowCompact: { position: 'absolute', right: spacing.md, bottom: spacing.md },
   dashboardGrid: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.md },
   dashboardGridCompact: { flexDirection: 'column' },

@@ -1,10 +1,11 @@
 import { Tabs } from 'expo-router';
 import { CalendarDays, ChartNoAxesCombined, ClipboardList, MessageCircle, Settings, Shield } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 
+import { Gradient } from '@/components/depth';
 import { useAppStore } from '@/store/appStore';
-import { colors, font } from '@/theme';
+import { colors, font, gradients, radius } from '@/theme';
 
 function Icon({ icon: Icon, focused }: { icon: typeof CalendarDays; focused: boolean }) {
   const focus = useRef(new Animated.Value(focused ? 1 : 0)).current;
@@ -20,8 +21,9 @@ function Icon({ icon: Icon, focused }: { icon: typeof CalendarDays; focused: boo
   }, [focus, focused]);
 
   return (
-    <Animated.View style={[styles.iconWrap, focused && styles.iconWrapFocused, { transform: [{ scale: focus.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.08] }) }, { translateY: focus.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }]}>
-      <Icon size={19} color={focused ? colors.black : colors.textDim} strokeWidth={focused ? 2.5 : 2} />
+    <Animated.View style={[styles.iconWrap, focused && styles.iconWrapFocused, { transform: [{ scale: focus.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.1] }) }, { translateY: focus.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) }] }]}>
+      {focused ? <Gradient colors={gradients.primary} direction="diagonal" radius={radius.sm} /> : null}
+      <View><Icon size={19} color={focused ? colors.black : colors.textDim} strokeWidth={focused ? 2.5 : 2} /></View>
     </Animated.View>
   );
 }
@@ -74,6 +76,6 @@ const styles = StyleSheet.create({
   },
   item: { minWidth: 62 },
   label: { fontSize: font.tiny, fontWeight: '700', marginTop: 2 },
-  iconWrap: { width: 31, height: 27, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  iconWrapFocused: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 10, elevation: 5 },
+  iconWrap: { width: 33, height: 28, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  iconWrapFocused: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.45, shadowRadius: 12, elevation: 6 },
 });

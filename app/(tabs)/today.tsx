@@ -21,11 +21,12 @@ import { useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { AchievementBurst, Reveal } from '@/components/motion';
+import { Gradient } from '@/components/depth';
 import { Button, Card, ProgressRing, Screen } from '@/components/ui';
 import { currentWeekday, WEEKDAY_LABEL } from '@/engine/week';
 import { todayKey } from '@/services/storage';
 import { useAppStore } from '@/store/appStore';
-import { colors, font, radius, spacing } from '@/theme';
+import { colors, font, gradients, radius, shadow, spacing } from '@/theme';
 import type { DailyLog } from '@/types';
 
 function Stepper({
@@ -136,6 +137,19 @@ export default function Today() {
             resizeMode="cover"
             style={[styles.summaryBandImage, !wide && styles.summaryBandImageNarrow]}
           />
+          {wide ? (
+            <Gradient
+              colors={['rgba(9,10,9,1)', 'rgba(9,10,9,0.35)', 'rgba(9,10,9,0)']}
+              direction="horizontal"
+              locations={[0, 0.5, 0.68]}
+            />
+          ) : (
+            <Gradient
+              colors={['rgba(9,10,9,0)', 'rgba(9,10,9,0.65)', 'rgba(9,10,9,1)']}
+              direction="vertical"
+              locations={[0, 0.35, 0.62]}
+            />
+          )}
           <View style={[styles.summaryContent, !wide && styles.summaryContentNarrow]}>
             <View style={[styles.summaryMain, !wide && styles.summaryMainNarrow]}>
               <View style={styles.summaryCopy}>
@@ -151,7 +165,8 @@ export default function Today() {
               </View>
             </View>
             <View style={[styles.summaryStats, !wide && styles.summaryStatsNarrow]}>
-              <ProgressRing progress={dayCompletion} value={`${dayCompletion}%`} label="day done" size={88} />
+              <Gradient colors={gradients.surfaceGlass} direction="diagonal" radius={radius.md} />
+              <ProgressRing progress={dayCompletion} value={`${dayCompletion}%`} label="day done" size={88} gradient={gradients.primary} />
               <SummaryStat value={`${plan.macros.calorieRange[0]}–${plan.macros.calorieRange[1]}`} label="kcal range" />
               <SummaryStat value={`${plan.macros.proteinG}g`} label="protein" accent={colors.peach} />
               <SummaryStat value={readiness.label} label="readiness" accent={readiness.color} />
@@ -374,7 +389,7 @@ const styles = StyleSheet.create({
   syncBadge: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 11, paddingVertical: 7, borderRadius: radius.md, backgroundColor: '#17271E', borderWidth: 1, borderColor: '#31533E' },
   syncBadgeOffline: { backgroundColor: '#2B2516', borderColor: '#5A4B22' },
   syncText: { color: colors.textDim, fontSize: font.tiny, fontWeight: '700' },
-  summaryHero: { minHeight: 350, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, backgroundColor: colors.black },
+  summaryHero: { minHeight: 350, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, backgroundColor: colors.black, ...shadow.high },
   summaryBand: { flex: 1, minHeight: 350, justifyContent: 'center', padding: spacing.xl, backgroundColor: colors.black },
   summaryBandImage: { position: 'absolute', top: 0, right: 0, width: '52%', height: '100%', opacity: 0.9, borderTopRightRadius: radius.md, borderBottomRightRadius: radius.md },
   summaryBandImageNarrow: { width: '100%', height: 235, borderBottomRightRadius: 0 },

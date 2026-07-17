@@ -22,7 +22,7 @@ import { Card, PageHeader, ProgressRing, Screen, StatusPill } from '@/components
 import { currentWeekday, WEEKDAY_LABEL } from '@/engine/week';
 import { isAIEnabled } from '@/services/claude';
 import { useAppStore } from '@/store/appStore';
-import { colors, font, radius, spacing } from '@/theme';
+import { colors, font, gradients, radius, spacing } from '@/theme';
 import type { Weekday } from '@/types';
 
 type PlanTab = 'meals' | 'workouts' | 'nutrition';
@@ -84,6 +84,7 @@ export default function PlanScreen() {
           label={`${WEEKDAY_LABEL[day]} kcal`}
           size={compact ? 112 : 138}
           accent={colors.primary}
+          gradient={gradients.primary}
         />
       </View>
 

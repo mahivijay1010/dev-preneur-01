@@ -16,10 +16,11 @@ import {
   ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 
-import { AnimatedNumber, EnergyLoader, Reveal, SpatialBackdrop, usePressMotion, useReducedMotion } from './motion';
-import { colors, font, radius, shadow, spacing } from '../theme';
+import { AnimatedNumber, EnergyLoader, Reveal, usePressMotion, useReducedMotion } from './motion';
+import { AuroraBackdrop, Gradient, ShineSweep, TiltCard } from './depth';
+import { colors, font, glass, gradients, radius, shadow, spacing } from '../theme';
 
 export function Screen({
   children,
@@ -38,7 +39,7 @@ export function Screen({
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SpatialBackdrop />
+      <AuroraBackdrop />
       {scroll ? (
         <ScrollView
           style={styles.scroll}
@@ -99,23 +100,43 @@ export function Card({
   children,
   style,
   tone = 'default',
+  tilt = false,
+  glow = false,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
-  tone?: 'default' | 'raised' | 'tinted';
+  tone?: 'default' | 'raised' | 'tinted' | 'glass';
+  tilt?: boolean;
+  glow?: boolean;
 }) {
-  return (
+  const sheen = tone === 'glass' || tone === 'raised';
+  const body = (
     <Reveal
       style={[
         styles.card,
         tone === 'raised' && styles.cardRaised,
         tone === 'tinted' && styles.cardTinted,
+        tone === 'glass' && styles.cardGlass,
+        glow && shadow.glow,
         style,
       ]}
     >
+      {sheen ? (
+        <Gradient
+          colors={['rgba(255,255,255,0.07)', 'rgba(255,255,255,0)']}
+          direction="vertical"
+          locations={[0, 0.55]}
+          radius={radius.md}
+        />
+      ) : null}
       {children}
     </Reveal>
   );
+
+  if (tilt) {
+    return <TiltCard style={styles.cardTiltWrap}>{body}</TiltCard>;
+  }
+  return body;
 }
 
 export function Button({
@@ -155,6 +176,12 @@ export function Button({
           isDisabled && styles.btnDisabled,
         ]}
       >
+        {variant === 'primary' ? (
+          <>
+            <Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} />
+            {!isDisabled ? <ShineSweep interval={5200} delay={1400} /> : null}
+          </>
+        ) : null}
         {loading ? (
           <EnergyLoader dark={variant === 'primary'} />
         ) : (
@@ -289,14 +316,16 @@ export function ProgressRing({
   label,
   size = 116,
   accent = colors.primary,
+  gradient,
 }: {
   progress: number;
   value: string;
   label?: string;
   size?: number;
   accent?: string;
+  gradient?: string[];
 }) {
-  const stroke = Math.max(7, Math.round(size * 0.075));
+  const stroke = Math.max(7, Math.round(size * 0.08));
   const radiusValue = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radiusValue;
   const safe = Math.max(0, Math.min(100, progress));
@@ -304,6 +333,8 @@ export function ProgressRing({
   const [displayProgress, setDisplayProgress] = useState(0);
   const reduced = useReducedMotion();
   const parsed = value.match(/^([\d.]+)(.*)$/);
+  const gradId = useRef(`ring-${Math.round(size)}-${Math.random().toString(36).slice(2, 7)}`).current;
+  const strokeColor = gradient ? `url(#${gradId})` : accent;
 
   useEffect(() => {
     const listener = ringProgress.addListener(({ value: next }) => setDisplayProgress(next));
@@ -325,6 +356,15 @@ export function ProgressRing({
   return (
     <Reveal distance={8} style={[styles.ring, { width: size, height: size }]}>
       <Svg width={size} height={size} style={styles.ringSvg}>
+        {gradient ? (
+          <Defs>
+            <SvgLinearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+              {gradient.map((color, index) => (
+                <Stop key={index} offset={index / Math.max(1, gradient.length - 1)} stopColor={color} />
+              ))}
+            </SvgLinearGradient>
+          </Defs>
+        ) : null}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -338,7 +378,7 @@ export function ProgressRing({
           cy={size / 2}
           r={radiusValue}
           fill="none"
-          stroke={accent}
+          stroke={strokeColor}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -529,17 +569,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.sm,
+    overflow: 'hidden',
+    ...shadow.low,
   },
   cardRaised: { backgroundColor: colors.bgElevated, borderColor: colors.borderStrong, ...shadow.card },
   cardTinted: { backgroundColor: colors.primaryDim, borderColor: '#5C702C' },
+  cardGlass: { backgroundColor: glass.fill, borderColor: glass.borderStrong, ...shadow.high },
+  cardTiltWrap: { width: '100%' },
   btn: {
-    minHeight: 48,
+    minHeight: 50,
     borderRadius: radius.md,
-    paddingVertical: 13,
+    paddingVertical: 14,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    overflow: 'hidden',
   },
   btnPrimary: { backgroundColor: colors.primary, borderColor: colors.primary, ...shadow.glow },
   btnSecondary: { backgroundColor: colors.text, borderColor: colors.text },
@@ -564,7 +609,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
   },
-  inputFrameFocused: { borderColor: colors.primary },
+  inputFrameFocused: { borderColor: colors.primary, ...shadow.glow },
   inputFrameError: { borderColor: colors.danger },
   input: { flex: 1, color: colors.text, fontSize: font.body, paddingVertical: 13 },
   inputMultiline: { minHeight: 88, textAlignVertical: 'top' },

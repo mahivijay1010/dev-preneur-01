@@ -24,11 +24,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { StatusPill } from '@/components/ui';
-import { EnergyLoader, FloatingLayer, Reveal, SpatialBackdrop } from '@/components/motion';
+import { EnergyLoader, FloatingLayer, Reveal } from '@/components/motion';
+import { AuroraBackdrop, Gradient } from '@/components/depth';
 import { currentWeekday, WEEKDAY_LABEL } from '@/engine/week';
 import { askCoach, isCoachAIEnabled } from '@/services/coach';
 import { useAppStore } from '@/store/appStore';
-import { colors, font, radius, shadow, spacing } from '@/theme';
+import { colors, font, gradients, radius, shadow, spacing } from '@/theme';
 
 const webInputReset = Platform.OS === 'web'
   ? ({ outlineStyle: 'none', outlineWidth: 0, boxShadow: 'none' } as any)
@@ -67,12 +68,12 @@ export default function Coach() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SpatialBackdrop />
+      <AuroraBackdrop />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.topBar}>
           <Reveal style={[styles.topBarInner, !wide && styles.topBarInnerNarrow]}>
             <View>
-              <View style={styles.titleRow}><View style={styles.botMark}><Bot size={20} color={colors.black} /></View><Text style={styles.title}>FitPlan Coach</Text></View>
+              <View style={styles.titleRow}><View style={styles.botMark}><Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} /><View><Bot size={20} color={colors.black} /></View></View><Text style={styles.title}>FitPlan Coach</Text></View>
               <Text style={styles.sub}>Answers grounded in your plan, preferences, and approved logs.</Text>
             </View>
             <StatusPill label={isCoachAIEnabled() ? 'Plan-aware AI' : 'Offline coaching'} color={isCoachAIEnabled() ? colors.success : colors.warning} icon={<Sparkles size={13} color={isCoachAIEnabled() ? colors.success : colors.warning} />} />
@@ -159,7 +160,8 @@ export default function Coach() {
                   multiline
                 />
                 <Pressable accessibilityLabel="Send message" style={[styles.sendButton, (!text.trim() || busy) && styles.sendButtonDisabled]} onPress={() => void send(text)} disabled={!text.trim() || busy}>
-                  <Send size={18} color={colors.black} />
+                  <Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} />
+                  <View><Send size={18} color={colors.black} /></View>
                 </Pressable>
               </View>
               <Text style={styles.disclaimer}>Coaching guidance only. FitPlan does not diagnose pain, injury, or medical conditions.</Text>
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
   topBarInner: { width: '100%', maxWidth: 1240, minHeight: 86, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   topBarInnerNarrow: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  botMark: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  botMark: { width: 38, height: 38, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, overflow: 'hidden', ...shadow.glow },
   title: { color: colors.text, fontSize: font.h2, fontWeight: '900' },
   sub: { color: colors.textDim, fontSize: font.tiny, marginTop: 5 },
   workspace: { flex: 1, width: '100%', maxWidth: 1240, alignSelf: 'center', flexDirection: 'row' },
@@ -233,7 +235,7 @@ const styles = StyleSheet.create({
   composerShell: { borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bgElevated, padding: spacing.md },
   composer: { width: '100%', maxWidth: 860, minHeight: 58, alignSelf: 'center', flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, padding: 6, paddingLeft: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong },
   input: { flex: 1, minHeight: 44, maxHeight: 110, color: colors.text, fontSize: font.body, paddingVertical: 10, textAlignVertical: 'center' },
-  sendButton: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+  sendButton: { width: 46, height: 46, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, overflow: 'hidden', ...shadow.glow },
   sendButtonDisabled: { opacity: 0.35 },
   disclaimer: { width: '100%', maxWidth: 860, alignSelf: 'center', color: colors.textMuted, fontSize: 9, textAlign: 'center', marginTop: spacing.sm },
 });
