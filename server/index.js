@@ -50,7 +50,7 @@ async function start() {
     throw new Error('JWT_SECRET must contain at least 32 characters.');
   }
   await mongoose.connect(getMongoUri(), { serverSelectionTimeoutMS: 10000 });
-  app.listen(port, () => console.log(`FitPlan API listening on http://localhost:${port}`));
+  app.listen(port, '0.0.0.0', () => console.log(`FitPlan API listening on http://localhost:${port}`));
 }
 
 start().catch((error) => {

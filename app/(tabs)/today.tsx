@@ -86,7 +86,8 @@ export default function Today() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 940;
-  const { plan, profile, user, updateTodayLog, logs, syncStatus } = useAppStore();
+  const compact = width < 620;
+  const { plan, profile, user, updateTodayLog, toggleMealLogged, logs, syncStatus } = useAppStore();
   const [celebrating, setCelebrating] = useState(false);
   const day = currentWeekday();
   const log: DailyLog = logs[todayKey()] ?? { date: todayKey() };
@@ -105,20 +106,11 @@ export default function Today() {
   }
 
   const mealsLogged = new Set(log.mealsLogged ?? []);
+  const actualMeals = new Map((log.mealEntries ?? []).map((entry) => [entry.slot, entry]));
   const mealProgress = meals?.items.length ? Math.round((mealsLogged.size / meals.items.length) * 100) : 0;
   const workoutCount = workout && !workout.isRest ? workout.exercises.length : 0;
   const readiness = getReadiness(log);
   const dayCompletion = getDayCompletion(log, mealProgress);
-
-  const toggleMeal = (slot: string, proteinG: number) => {
-    const next = new Set(mealsLogged);
-    const checked = next.has(slot);
-    checked ? next.delete(slot) : next.add(slot);
-    updateTodayLog({
-      mealsLogged: [...next],
-      proteinG: Math.max(0, (log.proteinG ?? 0) + (checked ? -proteinG : proteinG)),
-    });
-  };
 
   return (
     <>
@@ -204,7 +196,7 @@ export default function Today() {
               )}
             </View>
 
-            <View style={styles.workoutActions}>
+            <View style={[styles.workoutActions, compact && styles.workoutActionsCompact]}>
               <Button
                 label={log.workoutCompleted ? 'Workout completed' : 'Mark complete'}
                 variant={log.workoutCompleted ? 'secondary' : 'primary'}
@@ -241,18 +233,29 @@ export default function Today() {
             <View style={styles.mealList}>
               {meals?.items.map((meal) => {
                 const checked = mealsLogged.has(meal.slot);
+                const actual = actualMeals.get(meal.slot);
+                const displayed = actual ?? meal;
                 return (
-                  <Pressable key={meal.slot} style={styles.mealRow} onPress={() => toggleMeal(meal.slot, meal.proteinG)}>
+                  <Pressable key={meal.slot} style={[styles.mealRow, checked && styles.mealRowLogged]} onPress={() => toggleMealLogged(meal.slot)}>
                     <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
                       {checked ? <Check size={15} color={colors.black} strokeWidth={3} /> : null}
                     </View>
                     <View style={styles.mealCopy}>
-                      <Text style={styles.mealSlot}>{meal.slot}</Text>
-                      <Text style={[styles.mealName, checked && styles.mealNameDone]}>{meal.name}</Text>
+                      <View style={styles.mealMetaRow}>
+                        <Text style={styles.mealSlot}>{meal.slot}</Text>
+                        {actual ? (
+                          <View style={styles.actualBadge}>
+                            <Camera size={11} color={colors.accent} />
+                            <Text style={styles.actualBadgeText}>{actual.source === 'camera' ? 'PHOTO LOG' : 'CUSTOM LOG'}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={[styles.mealName, checked && styles.mealNameDone]}>{displayed.name}</Text>
+                      {actual ? <Text style={styles.plannedMeal}>Planned: {meal.name}</Text> : null}
                     </View>
                     <View style={styles.mealMacros}>
-                      <Text style={styles.mealCalories}>{meal.calories} kcal</Text>
-                      <Text style={styles.mealProtein}>{meal.proteinG}g protein</Text>
+                      <Text style={styles.mealCalories}>{displayed.calories} kcal</Text>
+                      <Text style={styles.mealProtein}>{displayed.proteinG}g protein</Text>
                     </View>
                   </Pressable>
                 );
@@ -395,6 +398,7 @@ const styles = StyleSheet.create({
   exerciseMeta: { color: colors.textDim, fontSize: font.tiny, lineHeight: 16 },
   restState: { alignItems: 'flex-start', gap: spacing.sm, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
   workoutActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  workoutActionsCompact: { flexDirection: 'column' },
   flexButton: { flex: 1 },
   formButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surfaceAlt, borderRadius: radius.md },
   formButtonText: { color: colors.text, fontSize: font.small, fontWeight: '700' },
@@ -404,13 +408,18 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: colors.success, borderRadius: 3 },
   progressCaption: { color: colors.textMuted, fontSize: font.tiny },
   mealList: { marginTop: spacing.xs },
-  mealRow: { minHeight: 67, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  mealRow: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm, paddingHorizontal: spacing.xs, borderRadius: radius.md },
+  mealRowLogged: { backgroundColor: colors.successDim },
   checkBox: { width: 24, height: 24, borderRadius: radius.sm, borderWidth: 2, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   checkBoxOn: { backgroundColor: colors.success, borderColor: colors.success },
   mealCopy: { flex: 1, gap: 3 },
+  mealMetaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
   mealSlot: { color: colors.textMuted, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 },
+  actualBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.pill, backgroundColor: colors.accentDim },
+  actualBadgeText: { color: colors.accent, fontSize: 8, fontWeight: '900' },
   mealName: { color: colors.text, fontSize: font.small, fontWeight: '700' },
-  mealNameDone: { color: colors.textDim, textDecorationLine: 'line-through' },
+  mealNameDone: { color: colors.text },
+  plannedMeal: { color: colors.textMuted, fontSize: font.tiny },
   mealMacros: { alignItems: 'flex-end', gap: 2 },
   mealCalories: { color: colors.text, fontSize: font.tiny, fontWeight: '700' },
   mealProtein: { color: colors.peach, fontSize: font.tiny },

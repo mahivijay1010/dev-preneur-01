@@ -17,7 +17,8 @@ async function settle(page, timeout = 1200) {
 }
 
 for (const target of targets) {
-  const page = await browser.newPage({ viewport: { width: target.width, height: target.height } });
+  const context = await browser.newContext({ viewport: { width: target.width, height: target.height } });
+  const page = await context.newPage();
   const errors = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -82,6 +83,27 @@ for (const target of targets) {
   const completionPersisted = await page.getByText('Workout completed', { exact: true }).isVisible();
   console.log(JSON.stringify({ target: `completion-${target.name}`, completionPersisted, errors }, null, 2));
 
+  await page.goto(`${baseURL}/food-camera`, { waitUntil: 'networkidle' });
+  await settle(page);
+  await page.getByText('Lunch', { exact: true }).click();
+  await page.getByText('Log without a photo', { exact: true }).click();
+  await page.getByPlaceholder('e.g. grilled chicken').fill('Paneer power bowl');
+  await page.getByPlaceholder('e.g. 150 g').fill('1 large bowl');
+  const macroFields = page.locator('input[placeholder="0"]');
+  await macroFields.nth(0).fill('520');
+  await macroFields.nth(1).fill('32');
+  await page.screenshot({ path: `.artifacts/food-camera-${target.name}.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Log lunch' }).click();
+  await page.waitForURL(/\/today/, { timeout: 10000 });
+  await settle(page, 500);
+  const mealVisible = await page.getByText('Paneer power bowl', { exact: true }).isVisible();
+  const mealMacrosVisible = await page.getByText('32g protein', { exact: true }).isVisible();
+  await page.reload({ waitUntil: 'networkidle' });
+  await settle(page, 500);
+  const mealPersisted = await page.getByText('Paneer power bowl', { exact: true }).isVisible();
+  await page.screenshot({ path: `.artifacts/today-meal-logged-${target.name}.png`, fullPage: true });
+  console.log(JSON.stringify({ target: `meal-log-${target.name}`, mealVisible, mealMacrosVisible, mealPersisted, errors }, null, 2));
+
   const appRoutes = [
     ['plan', '/(tabs)/plan'],
     ['progress', '/(tabs)/progress'],
@@ -90,6 +112,9 @@ for (const target of targets) {
     ['restaurant', '/restaurant'],
     ['grocery', '/grocery'],
     ['local-preferences', '/local-preferences'],
+    ['form-check', '/form-check'],
+    ['digital-twin', '/digital-twin'],
+    ['measurements', '/measurements'],
   ];
   for (const [name, route] of appRoutes) {
     await page.goto(`${baseURL}${route}`, { waitUntil: 'networkidle' });
@@ -103,7 +128,7 @@ for (const target of targets) {
     }));
     console.log(JSON.stringify({ target: `${name}-${target.name}`, ...routeMetrics, errors }, null, 2));
   }
-  await page.close();
+  await context.close();
 }
 
 await browser.close();

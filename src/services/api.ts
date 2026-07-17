@@ -1,7 +1,30 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 import type { User } from '../types';
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+const API_URL = resolveApiUrl();
 let sessionToken: string | null = null;
+
+function resolveApiUrl(): string {
+  const configured = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+  if (Platform.OS === 'web' || !/^https?:\/\/(localhost|127\.0\.0\.1)(?=[:/])/i.test(configured)) {
+    return configured;
+  }
+
+  const expo = Constants as unknown as {
+    expoConfig?: { hostUri?: string };
+    expoGoConfig?: { debuggerHost?: string };
+  };
+  const developmentHost = (expo.expoConfig?.hostUri || expo.expoGoConfig?.debuggerHost)
+    ?.split(':')[0];
+  const nativeHost = developmentHost || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
+
+  return configured.replace(
+    /^(https?:\/\/)(localhost|127\.0\.0\.1)(?=[:/])/i,
+    `$1${nativeHost}`,
+  );
+}
 
 export class ApiError extends Error {
   status: number;

@@ -4,6 +4,7 @@
 // where a live camera isn't available.
 
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 export interface PickedImage {
   uri: string;
@@ -29,6 +30,7 @@ function firstAsset(result: ImagePicker.ImagePickerResult): PickedImage | null {
 }
 
 export async function captureFromCamera(): Promise<PickedImage | null> {
+  if (Platform.OS === 'web') return pickFromLibrary();
   const perm = await ImagePicker.requestCameraPermissionsAsync();
   if (!perm.granted) return pickFromLibrary();
   return firstAsset(await ImagePicker.launchCameraAsync(COMMON));

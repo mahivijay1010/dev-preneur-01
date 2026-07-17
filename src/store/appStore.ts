@@ -6,6 +6,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { EXPERTS, expertReply, generatePlanReview } from '../data/experts';
 import { applyAdjustment, decideAdjustment } from '../engine/adjustments';
 import { generateBasePlan } from '../engine/generatePlan';
+import { currentWeekday } from '../engine/week';
 import { personalizePlan } from '../services/claude';
 import { ApiError, authApi, setApiToken, type CloudState } from '../services/api';
 import { todayKey, zustandStorage } from '../services/storage';
@@ -17,6 +18,7 @@ import type {
   CoachTone,
   DailyLog,
   FoodInfo,
+  LoggedMeal,
   Measurement,
   MealItem,
   OnboardingProfile,
@@ -108,6 +110,7 @@ interface AppState {
 
   // tracking
   updateTodayLog: (patch: Partial<DailyLog>) => void;
+  toggleMealLogged: (slot: MealItem['slot']) => void;
   getLog: (date: string) => DailyLog | undefined;
 
   // Phase 2 actions
@@ -131,7 +134,7 @@ interface AppState {
   // Phase 5 actions
   addProgressPhoto: (photo: Omit<ProgressPhoto, 'id'>) => void;
   removeProgressPhoto: (id: string) => void;
-  logPhotoMeal: (proteinG: number) => void;
+  logPhotoMeal: (meal: Omit<LoggedMeal, 'id' | 'loggedAt'>) => void;
   setReminderPrefs: (prefs: ReminderPrefs) => void;
   addRestaurantEvaluation: (evaluation: Omit<RestaurantHistoryItem, 'id' | 'createdAt'>) => void;
 
@@ -353,6 +356,24 @@ export const useAppStore = create<AppState>()(
         set({ logs: { ...get().logs, [key]: { ...existing, ...patch } } });
       },
 
+      toggleMealLogged: (slot) => {
+        const key = todayKey();
+        const existing = get().logs[key] ?? { date: key };
+        const logged = new Set(existing.mealsLogged ?? []);
+        const removing = logged.has(slot);
+        removing ? logged.delete(slot) : logged.add(slot);
+        const mealEntries = removing
+          ? (existing.mealEntries ?? []).filter((entry) => entry.slot !== slot)
+          : existing.mealEntries ?? [];
+        const next: DailyLog = {
+          ...existing,
+          mealsLogged: [...logged],
+          mealEntries,
+        };
+        next.proteinG = calculateDailyProtein(next, get().plan);
+        set({ logs: { ...get().logs, [key]: next } });
+      },
+
       getLog: (date) => get().logs[date],
 
       submitWeeklyReview: (input) => {
@@ -439,13 +460,25 @@ export const useAppStore = create<AppState>()(
       removeProgressPhoto: (id) =>
         set({ progressPhotos: get().progressPhotos.filter((p) => p.id !== id) }),
 
-      logPhotoMeal: (proteinG) => {
+      logPhotoMeal: (meal) => {
         const key = todayKey();
         const existing = get().logs[key] ?? { date: key };
+        const entry: LoggedMeal = {
+          ...meal,
+          id: uid('meal'),
+          loggedAt: new Date().toISOString(),
+        };
+        const mealEntries = [
+          ...(existing.mealEntries ?? []).filter((item) => item.slot !== meal.slot),
+          entry,
+        ];
+        const mealsLogged = [...new Set([...(existing.mealsLogged ?? []), meal.slot])];
+        const next: DailyLog = { ...existing, mealsLogged, mealEntries };
+        next.proteinG = calculateDailyProtein(next, get().plan);
         set({
           logs: {
             ...get().logs,
-            [key]: { ...existing, proteinG: Math.max(0, (existing.proteinG ?? 0) + proteinG) },
+            [key]: next,
           },
         });
       },
@@ -567,6 +600,18 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+
+function calculateDailyProtein(log: DailyLog, plan: Plan | null): number {
+  const entries = new Map((log.mealEntries ?? []).map((entry) => [entry.slot, entry]));
+  const planned = new Map(
+    (plan?.meals.find((day) => day.day === currentWeekday())?.items ?? []).map((meal) => [meal.slot, meal]),
+  );
+  return (log.mealsLogged ?? []).reduce((total, slot) => {
+    const actual = entries.get(slot as MealItem['slot']);
+    const fallback = planned.get(slot as MealItem['slot']);
+    return total + (actual?.proteinG ?? fallback?.proteinG ?? 0);
+  }, 0);
+}
 
 const CLOUD_FIELDS: (keyof AppState)[] = [
   'profile',

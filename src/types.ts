@@ -207,6 +207,20 @@ export interface FoodPhotoAnalysis {
   source: 'ai' | 'manual';
 }
 
+// A meal the user actually logged. Keeping this separate from the generated
+// plan lets Today show what was eaten instead of only marking a slot complete.
+export interface LoggedMeal {
+  id: string;
+  slot: MealItem['slot'];
+  name: string;
+  foods: DetectedFood[];
+  calories: number;
+  proteinG: number;
+  loggedAt: string;
+  source: 'camera' | 'manual';
+  confidence?: Confidence;
+}
+
 export interface MenuRecommendation {
   dish: string;
   reason: string;
@@ -402,6 +416,7 @@ export interface DailyLog {
   workoutCompleted?: boolean;
   proteinG?: number; // running total logged for the day
   mealsLogged?: string[]; // meal slot keys checked off
+  mealEntries?: LoggedMeal[]; // actual camera/manual meals for each logged slot
 }
 
 // ---------------------------------------------------------------------------
