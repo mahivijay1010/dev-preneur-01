@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#0B0F19"
+      "backgroundColor": "#0D0F0E"
     },
     "ios": {
       "supportsTablet": true,
@@ -27,7 +27,7 @@
       [
         "expo-notifications",
         {
-          "color": "#22D3EE"
+          "color": "#D8FF72"
         }
       ],
       [

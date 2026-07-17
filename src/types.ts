@@ -130,6 +130,11 @@ export interface RestaurantEvaluation {
   modifications: string[];
 }
 
+export interface RestaurantHistoryItem extends RestaurantEvaluation {
+  id: string;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Phase 4 — Retention & behaviour change
 // ---------------------------------------------------------------------------

@@ -10,9 +10,8 @@ import { REGIONAL_FOODS } from '@/data/regionalFoods';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
 
-// Read-only admin overview for Phase 1: exercise/meal/food catalogs, the
-// current user, plan review, and a placeholder for reported safety issues.
-// Editing/CRUD lands in a later iteration against a real backend.
+// Read-only operational overview for catalogs, the current user, plan review,
+// and reported safety issues. Account data is backed by the API.
 type Section = 'exercises' | 'meals' | 'users' | 'plan' | 'safety';
 
 export default function Admin() {

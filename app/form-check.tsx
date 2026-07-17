@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CaptureButtons } from '@/components/CaptureButtons';
+import { EnergyLoader } from '@/components/motion';
 import { Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
 import { FORM_EXERCISES, FORM_GUIDES } from '@/data/formCues';
 import type { PickedImage } from '@/services/imagePicker';
@@ -138,7 +139,7 @@ export default function FormCheck() {
 
       {busy && (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+          <EnergyLoader />
           <Text style={styles.dim}>Checking your form…</Text>
         </View>
       )}

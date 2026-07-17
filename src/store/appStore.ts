@@ -1,6 +1,4 @@
-// Single persisted zustand store holding all Phase 1 client state:
-// auth, onboarding profile, generated plan, and daily logs. Persisted to
-// AsyncStorage so the app is fully offline and survives restarts.
+// The store keeps an offline cache and synchronizes user-owned data to the API.
 
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -9,8 +7,10 @@ import { EXPERTS, expertReply, generatePlanReview } from '../data/experts';
 import { applyAdjustment, decideAdjustment } from '../engine/adjustments';
 import { generateBasePlan } from '../engine/generatePlan';
 import { personalizePlan } from '../services/claude';
+import { ApiError, authApi, setApiToken, type CloudState } from '../services/api';
 import { todayKey, zustandStorage } from '../services/storage';
 import { mergeImportIntoLogs, simulateImport } from '../services/wearables';
+import { DEFAULT_REMINDERS, type ReminderPrefs } from '../services/notifications';
 import type {
   Adjustment,
   CoachMessage,
@@ -24,6 +24,7 @@ import type {
   ExpertMessage,
   PlanReview,
   ProgressPhoto,
+  RestaurantHistoryItem,
   TwinAdjustment,
   User,
   WeeklyReview,
@@ -35,8 +36,33 @@ function uid(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
 }
 
+const EMPTY_USER_DATA = {
+  profile: null,
+  plan: null,
+  logs: {},
+  reviews: [],
+  adjustments: [],
+  chat: [],
+  ownedIngredients: [],
+  measurements: {},
+  repairsCompleted: 0,
+  progressPhotos: [],
+  reminderPrefs: DEFAULT_REMINDERS,
+  restaurantHistory: [],
+  connectedWearables: [],
+  assignedExpertId: null,
+  expertMessages: [],
+  planReviews: [],
+};
+
 interface AppState {
   hydrated: boolean;
+  sessionReady: boolean;
+  authToken: string | null;
+  authLoading: boolean;
+  authError: string | null;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'offline';
+  lastSyncedAt: string | null;
   user: User | null;
   profile: OnboardingProfile | null;
   plan: Plan | null;
@@ -57,6 +83,8 @@ interface AppState {
 
   // Phase 5 — camera & sensor features
   progressPhotos: ProgressPhoto[];
+  reminderPrefs: ReminderPrefs;
+  restaurantHistory: RestaurantHistoryItem[];
 
   // Phase 6 — integrations & professional support
   connectedWearables: WearableId[];
@@ -65,9 +93,13 @@ interface AppState {
   planReviews: PlanReview[];
 
   // auth
-  signIn: (email: string, name: string, provider: User['provider']) => void;
-  acceptConsent: () => void;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
+  signIn: (email: string, password: string) => Promise<boolean>;
+  bootstrapSession: () => Promise<void>;
+  clearAuthError: () => void;
+  acceptConsent: () => Promise<boolean>;
   signOut: () => void;
+  syncNow: () => Promise<void>;
 
   // onboarding + plan
   setProfile: (p: OnboardingProfile) => void;
@@ -100,6 +132,8 @@ interface AppState {
   addProgressPhoto: (photo: Omit<ProgressPhoto, 'id'>) => void;
   removeProgressPhoto: (id: string) => void;
   logPhotoMeal: (proteinG: number) => void;
+  setReminderPrefs: (prefs: ReminderPrefs) => void;
+  addRestaurantEvaluation: (evaluation: Omit<RestaurantHistoryItem, 'id' | 'createdAt'>) => void;
 
   // Phase 7 actions
   applyTwinAdjustment: (rec: TwinAdjustment) => Adjustment | null;
@@ -112,67 +146,187 @@ interface AppState {
   requestPlanReview: () => PlanReview | null;
 }
 
+function cloudStatePatch(state: CloudState): Partial<AppState> {
+  return {
+    profile: (state.profile as OnboardingProfile | null | undefined) ?? null,
+    plan: (state.plan as Plan | null | undefined) ?? null,
+    logs: (state.logs as Record<string, DailyLog> | undefined) ?? {},
+    reviews: (state.reviews as WeeklyReview[] | undefined) ?? [],
+    adjustments: (state.adjustments as Adjustment[] | undefined) ?? [],
+    chat: (state.chat as CoachMessage[] | undefined) ?? [],
+    ownedIngredients: (state.ownedIngredients as string[] | undefined) ?? [],
+    measurements: (state.measurements as Record<string, Measurement> | undefined) ?? {},
+    repairsCompleted: (state.repairsCompleted as number | undefined) ?? 0,
+    progressPhotos: (state.progressPhotos as ProgressPhoto[] | undefined) ?? [],
+    reminderPrefs: (state.reminderPrefs as ReminderPrefs | undefined) ?? DEFAULT_REMINDERS,
+    restaurantHistory: (state.restaurantHistory as RestaurantHistoryItem[] | undefined) ?? [],
+    connectedWearables: (state.connectedWearables as WearableId[] | undefined) ?? [],
+    assignedExpertId: (state.assignedExpertId as string | null | undefined) ?? null,
+    expertMessages: (state.expertMessages as ExpertMessage[] | undefined) ?? [],
+    planReviews: (state.planReviews as PlanReview[] | undefined) ?? [],
+  };
+}
+
+function cloudStateFromStore(state: AppState): CloudState {
+  return {
+    profile: state.profile,
+    plan: state.plan,
+    logs: state.logs,
+    reviews: state.reviews,
+    adjustments: state.adjustments,
+    chat: state.chat,
+    ownedIngredients: state.ownedIngredients,
+    measurements: state.measurements,
+    repairsCompleted: state.repairsCompleted,
+    progressPhotos: state.progressPhotos,
+    reminderPrefs: state.reminderPrefs,
+    restaurantHistory: state.restaurantHistory,
+    connectedWearables: state.connectedWearables,
+    assignedExpertId: state.assignedExpertId,
+    expertMessages: state.expertMessages,
+    planReviews: state.planReviews,
+  };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       hydrated: false,
+      sessionReady: false,
+      authToken: null,
+      authLoading: false,
+      authError: null,
+      syncStatus: 'idle',
+      lastSyncedAt: null,
       user: null,
-      profile: null,
-      plan: null,
-      logs: {},
+      ...EMPTY_USER_DATA,
       generating: false,
-      reviews: [],
-      adjustments: [],
-      chat: [],
-      ownedIngredients: [],
-      measurements: {},
-      repairsCompleted: 0,
-      progressPhotos: [],
-      connectedWearables: [],
-      assignedExpertId: null,
-      expertMessages: [],
-      planReviews: [],
 
-      signIn: (email, name, provider) => {
-        // Demo auth: any credentials create/return a local user.
-        const isAdmin = email.trim().toLowerCase().startsWith('admin@');
+      register: async (name, email, password) => {
+        set({ authLoading: true, authError: null });
+        try {
+          const session = await authApi.register(name.trim(), email.trim(), password);
+          setApiToken(session.token);
+          set({
+            ...EMPTY_USER_DATA,
+            ...cloudStatePatch(session.state),
+            user: session.user,
+            authToken: session.token,
+            authLoading: false,
+            authError: null,
+            sessionReady: true,
+            syncStatus: 'synced',
+          });
+          return true;
+        } catch (error) {
+          set({ authLoading: false, authError: errorMessage(error) });
+          return false;
+        }
+      },
+
+      signIn: async (email, password) => {
+        set({ authLoading: true, authError: null });
+        try {
+          const session = await authApi.login(email.trim(), password);
+          setApiToken(session.token);
+          set({
+            ...EMPTY_USER_DATA,
+            ...cloudStatePatch(session.state),
+            user: session.user,
+            authToken: session.token,
+            authLoading: false,
+            authError: null,
+            sessionReady: true,
+            syncStatus: 'synced',
+          });
+          return true;
+        } catch (error) {
+          set({ authLoading: false, authError: errorMessage(error) });
+          return false;
+        }
+      },
+
+      bootstrapSession: async () => {
+        const token = get().authToken;
+        if (!token) {
+          set({ user: null, sessionReady: true });
+          return;
+        }
+
+        setApiToken(token);
+        try {
+          const [{ user }, { state }] = await Promise.all([
+            authApi.me(token),
+            authApi.loadState(token),
+          ]);
+          set({
+            ...cloudStatePatch(state),
+            user,
+            sessionReady: true,
+            syncStatus: 'synced',
+            lastSyncedAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) {
+            setApiToken(null);
+            set({
+              ...EMPTY_USER_DATA,
+              user: null,
+              authToken: null,
+              sessionReady: true,
+              syncStatus: 'idle',
+            });
+            return;
+          }
+          // Preserve the last valid local cache when the network is unavailable.
+          set({ sessionReady: true, syncStatus: 'offline' });
+        }
+      },
+
+      clearAuthError: () => set({ authError: null }),
+
+      acceptConsent: async () => {
+        const { user, authToken } = get();
+        if (!user || !authToken) return false;
+        set({ authLoading: true, authError: null });
+        try {
+          const response = await authApi.acceptConsent(authToken);
+          set({ user: response.user, authLoading: false, syncStatus: 'synced' });
+          return true;
+        } catch (error) {
+          set({ authLoading: false, authError: errorMessage(error), syncStatus: 'offline' });
+          return false;
+        }
+      },
+
+      signOut: () => {
+        setApiToken(null);
         set({
-          user: {
-            id: uid('u'),
-            email: email.trim(),
-            name: name.trim() || email.split('@')[0],
-            provider,
-            role: isAdmin ? 'admin' : 'user',
-            consentAcceptedAt: null,
-            createdAt: new Date().toISOString(),
-          },
+          ...EMPTY_USER_DATA,
+          user: null,
+          authToken: null,
+          authError: null,
+          authLoading: false,
+          syncStatus: 'idle',
+          lastSyncedAt: null,
         });
       },
 
-      acceptConsent: () => {
-        const u = get().user;
-        if (!u) return;
-        set({ user: { ...u, consentAcceptedAt: new Date().toISOString() } });
+      syncNow: async () => {
+        const { authToken, user } = get();
+        if (!authToken || !user) return;
+        set({ syncStatus: 'syncing' });
+        try {
+          const response = await authApi.saveState(authToken, cloudStateFromStore(get()));
+          set({ syncStatus: 'synced', lastSyncedAt: response.savedAt });
+        } catch {
+          set({ syncStatus: 'offline' });
+        }
       },
-
-      signOut: () =>
-        set({
-          user: null,
-          profile: null,
-          plan: null,
-          logs: {},
-          reviews: [],
-          adjustments: [],
-          chat: [],
-          ownedIngredients: [],
-          measurements: {},
-          repairsCompleted: 0,
-          progressPhotos: [],
-          connectedWearables: [],
-          assignedExpertId: null,
-          expertMessages: [],
-          planReviews: [],
-        }),
 
       setProfile: (p) => set({ profile: p }),
 
@@ -296,6 +450,16 @@ export const useAppStore = create<AppState>()(
         });
       },
 
+      setReminderPrefs: (reminderPrefs) => set({ reminderPrefs }),
+
+      addRestaurantEvaluation: (evaluation) =>
+        set({
+          restaurantHistory: [
+            { ...evaluation, id: uid('dish'), createdAt: new Date().toISOString() },
+            ...get().restaurantHistory,
+          ].slice(0, 12),
+        }),
+
       applyTwinAdjustment: (rec) => {
         const plan = get().plan;
         if (!plan || rec.calorieDelta === 0) return null;
@@ -376,6 +540,8 @@ export const useAppStore = create<AppState>()(
       name: 'fitplan-store-v1',
       storage: createJSONStorage(() => zustandStorage),
       partialize: (s) => ({
+        authToken: s.authToken,
+        lastSyncedAt: s.lastSyncedAt,
         user: s.user,
         profile: s.profile,
         plan: s.plan,
@@ -387,16 +553,47 @@ export const useAppStore = create<AppState>()(
         measurements: s.measurements,
         repairsCompleted: s.repairsCompleted,
         progressPhotos: s.progressPhotos,
+        reminderPrefs: s.reminderPrefs,
+        restaurantHistory: s.restaurantHistory,
         connectedWearables: s.connectedWearables,
         assignedExpertId: s.assignedExpertId,
         expertMessages: s.expertMessages,
         planReviews: s.planReviews,
       }),
       onRehydrateStorage: () => (state) => {
-        // Mark hydrated so the router can gate on real state, not the initial blank.
         useAppStore.setState({ hydrated: true });
         void state;
       },
     },
   ),
 );
+
+const CLOUD_FIELDS: (keyof AppState)[] = [
+  'profile',
+  'plan',
+  'logs',
+  'reviews',
+  'adjustments',
+  'chat',
+  'ownedIngredients',
+  'measurements',
+  'repairsCompleted',
+  'progressPhotos',
+  'reminderPrefs',
+  'restaurantHistory',
+  'connectedWearables',
+  'assignedExpertId',
+  'expertMessages',
+  'planReviews',
+];
+
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+useAppStore.subscribe((state, previous) => {
+  if (!state.hydrated || !state.sessionReady || !state.authToken || !state.user) return;
+  if (!CLOUD_FIELDS.some((key) => state[key] !== previous[key])) return;
+
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    void useAppStore.getState().syncNow();
+  }, 700);
+});

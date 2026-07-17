@@ -1,4 +1,4 @@
-# FitPlan — Phase 1 MVP
+# FitPlan
 
 A React Native (Expo) fitness app that gives users a **realistic plan built on
 real math + expert templates** and makes daily tracking frictionless. This
@@ -30,35 +30,76 @@ implements **Phase 1 (Core MVP)** from [docs/PRODUCT_SPEC.md](docs/PRODUCT_SPEC.
   by equipment, location, diet, and allergies.
 - **Claude layer** (`src/services/claude.ts`) — optional, adds a short tone-matched
   note per meal; silently falls back to templates if no key or on any error.
-- **State** — a single persisted `zustand` store (`src/store/appStore.ts`) backed
-  by AsyncStorage, so everything survives restarts and works offline.
+- **State** — a persisted `zustand` cache (`src/store/appStore.ts`) backed by
+  AsyncStorage and synchronized to the authenticated user's MongoDB record.
+- **API** — Express + MongoDB (`server/`) with hashed passwords, JWT sessions,
+  rate-limited authentication, per-user app state, and a server-side AI proxy.
 
-## Run it
+## Local setup
 
 ```bash
 npm install
-npm start          # then press w (web), i (iOS sim), or a (Android)
-# or directly:
-npm run web
-npm run ios
-npm run android
-npm run typecheck  # tsc --noEmit
+cp .env.example .env
 ```
 
-### Demo login
-Any name/email works. Use an email starting with **`admin@`** (e.g.
-`admin@fitplan.app`) to unlock the Admin tab.
+Set either a complete `MONGODB_URI` or the individual Atlas values in `.env`:
+
+```dotenv
+MONGO_USERNAME=<database-user>
+MONGO_PASSWORD=<database-password>
+MONGO_NAME=fitplan
+MONGO_HOST=<cluster>.mongodb.net
+JWT_SECRET=<at-least-32-random-characters>
+EXPO_PUBLIC_API_URL=http://localhost:4000/api
+```
+
+Generate a suitable JWT secret with `openssl rand -hex 32`. If you use MongoDB
+Atlas, create a database user and allow your current IP in Atlas Network Access.
+
+Start the frontend and backend together:
+
+```bash
+npm run dev
+```
+
+Or use two terminals:
+
+```bash
+npm run server:dev  # API at http://localhost:4000
+npm run web         # Expo web app at http://localhost:3000
+```
+
+Backend aliases:
+
+```bash
+npm run start:dev      # backend with nodemon
+npm run start:backend  # backend without file watching
+npm run start:frontend # frontend at http://localhost:3000
+```
+
+For a physical phone, replace `localhost` in `EXPO_PUBLIC_API_URL` with your
+computer's LAN IP. `npm run ios` and `npm run android` start the corresponding
+Expo target.
+
+### Admin accounts
+
+Set `ADMIN_EMAILS` in `.env` to a comma-separated allowlist before registering
+those accounts. Admin access is never inferred from an email prefix.
 
 ### Optional: enable AI personalization
 ```bash
-cp .env.example .env
-# set EXPO_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...
+# in .env, used only by the backend
+ANTHROPIC_API_KEY=your-server-side-key
 ```
-Without a key the app runs fully offline on deterministic templates.
+Without a key, deterministic planning and rule-based coaching continue to work.
+The AI credential is never bundled into the Expo client.
 
-> ⚠️ `EXPO_PUBLIC_*` vars are bundled into the client — fine for local demo, but
-> in production the Claude call must be proxied through your own backend so the
-> key is never shipped to devices.
+### Checks
+
+```bash
+npm run typecheck
+npm run verify:web  # requires the Expo web server and macOS Chrome
+```
 
 ## What's built (Phase 2 — Adaptive coaching)
 

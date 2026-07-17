@@ -5,5 +5,8 @@ web-build/
 *.log
 .env
 .env.local
+.env.*.local
+server/.env
 expo-env.d.ts
 .DS_Store
+.artifacts/

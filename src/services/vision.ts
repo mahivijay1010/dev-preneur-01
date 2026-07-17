@@ -12,13 +12,10 @@ import type {
   Plan,
   ProgressPhotoAnalysis,
 } from '../types';
-
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
-const MODEL = process.env.EXPO_PUBLIC_ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001';
-const ENDPOINT = 'https://api.anthropic.com/v1/messages';
+import { hasApiSession, postAI } from './api';
 
 export function isVisionEnabled(): boolean {
-  return API_KEY.trim().length > 0;
+  return hasApiSession();
 }
 
 interface CallOpts {
@@ -33,38 +30,26 @@ interface CallOpts {
 async function visionJSON<T>(opts: CallOpts): Promise<T | null> {
   if (!isVisionEnabled() || !opts.base64) return null;
   try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: opts.maxTokens ?? 700,
-        system: opts.system,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: normalizeMime(opts.mimeType),
-                  data: opts.base64,
-                },
+    const data = await postAI({
+      maxTokens: opts.maxTokens ?? 700,
+      system: opts.system,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: normalizeMime(opts.mimeType),
+                data: opts.base64,
               },
-              { type: 'text', text: opts.userText },
-            ],
-          },
-        ],
-      }),
+            },
+            { type: 'text', text: opts.userText },
+          ],
+        },
+      ],
     });
-    if (!res.ok) return null;
-    const data = await res.json();
     const text: string = data?.content?.[0]?.text ?? '';
     return parseJSON<T>(text);
   } catch {

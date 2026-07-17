@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { CaptureButtons } from '@/components/CaptureButtons';
+import { EnergyLoader } from '@/components/motion';
 import { Button, Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
 import type { PickedImage } from '@/services/imagePicker';
 import { todayKey } from '@/services/storage';
@@ -75,7 +76,7 @@ export default function ProgressPhotoScreen() {
 
       {busy && (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+          <EnergyLoader />
           <Text style={styles.dim}>Looking at your photo…</Text>
         </View>
       )}

@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CaptureButtons } from '@/components/CaptureButtons';
+import { EnergyLoader } from '@/components/motion';
 import { Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
 import type { PickedImage } from '@/services/imagePicker';
 import { isVisionEnabled, scanMenu } from '@/services/vision';
@@ -52,7 +53,7 @@ export default function MenuScanner() {
 
       {busy && (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+          <EnergyLoader />
           <Text style={styles.dim}>Reading the menu…</Text>
         </View>
       )}

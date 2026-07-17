@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CaptureButtons } from '@/components/CaptureButtons';
+import { EnergyLoader } from '@/components/motion';
 import { Button, Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
 import type { PickedImage } from '@/services/imagePicker';
 import { analyzeFoodPhoto, isVisionEnabled } from '@/services/vision';
@@ -76,7 +77,7 @@ export default function FoodCamera() {
 
       {busy && (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.primary} />
+          <EnergyLoader />
           <Text style={styles.dim}>Analysing your meal…</Text>
         </View>
       )}

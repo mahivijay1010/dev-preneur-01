@@ -6,13 +6,10 @@
 import { EXERCISES } from '../data/exercises';
 import { FOODS } from '../data/foods';
 import type { CoachMessage, OnboardingProfile, Plan } from '../types';
-
-const API_KEY = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '';
-const MODEL = process.env.EXPO_PUBLIC_ANTHROPIC_MODEL ?? 'claude-haiku-4-5-20251001';
-const ENDPOINT = 'https://api.anthropic.com/v1/messages';
+import { hasApiSession, postAI } from './api';
 
 export function isCoachAIEnabled(): boolean {
-  return API_KEY.trim().length > 0;
+  return hasApiSession();
 }
 
 const TONE: Record<OnboardingProfile['coachTone'], string> = {
@@ -82,23 +79,11 @@ export async function askCoach(
   ];
 
   try {
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 400,
-        system: buildSystem(profile, plan),
-        messages,
-      }),
+    const data = await postAI({
+      maxTokens: 400,
+      system: buildSystem(profile, plan),
+      messages,
     });
-    if (!res.ok) return fallbackAnswer(question, profile, plan);
-    const data = await res.json();
     const text: string = data?.content?.[0]?.text ?? '';
     return text.trim() || fallbackAnswer(question, profile, plan);
   } catch {
