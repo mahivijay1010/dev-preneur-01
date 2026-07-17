@@ -68,7 +68,7 @@ export function evaluateDish(
   if (signal.cook === 'mixed' || signal.cook === 'grilled') {
     betterChoices.push('Add a portion of dal, curd, or grilled protein to boost protein.');
   }
-  if (profile.goal === 'weight_loss') {
+  if (profile.goal !== 'muscle_gain') {
     betterChoices.push('Skip the sugary drink — water, buttermilk, or lime soda (no sugar).');
   }
 

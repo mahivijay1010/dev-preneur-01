@@ -88,7 +88,8 @@ function buildWorkouts(p: OnboardingProfile): WorkoutDay[] {
     addFrom('push');
     addFrom('pull');
     addFrom('core');
-    if (p.goal === 'weight_loss') addFrom('cardio');
+    // Fat-loss and recomposition benefit from added conditioning.
+    if (p.goal !== 'muscle_gain') addFrom('cardio');
 
     // De-duplicate by id while preserving order.
     const seen = new Set<string>();
@@ -98,7 +99,12 @@ function buildWorkouts(p: OnboardingProfile): WorkoutDay[] {
 
     return {
       day,
-      focus: p.goal === 'weight_loss' ? 'Full Body + Cardio' : 'Full Body Strength',
+      focus:
+        p.goal === 'weight_loss'
+          ? 'Full Body + Cardio'
+          : p.goal === 'body_recomposition'
+            ? 'Strength + Conditioning'
+            : 'Full Body Strength',
       isRest: false,
       exercises,
     };

@@ -1,6 +1,8 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  LayoutChangeEvent,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -401,6 +403,93 @@ export function InlineNotice({
     </View>
   );
 }
+
+// A cross-platform draggable slider (works on web + native via PanResponder).
+// Supports optional markers (e.g. a "recommended" tick) drawn on the track.
+export function Slider({
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  accent = colors.primary,
+  markers = [],
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step?: number;
+  accent?: string;
+  markers?: { value: number; color?: string; label?: string }[];
+}) {
+  const widthRef = useRef(0);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+  const toPct = (v: number) => (max <= min ? 0 : clamp((v - min) / (max - min), 0, 1));
+  const fromX = (x: number) => {
+    const w = widthRef.current || 1;
+    const raw = min + (clamp(x, 0, w) / w) * (max - min);
+    const stepped = Math.round(raw / step) * step;
+    return clamp(Math.round(stepped * 100) / 100, min, max);
+  };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => onChangeRef.current(fromX(e.nativeEvent.locationX)),
+      onPanResponderMove: (e) => onChangeRef.current(fromX(e.nativeEvent.locationX)),
+    }),
+  ).current;
+
+  const onLayout = (e: LayoutChangeEvent) => {
+    widthRef.current = e.nativeEvent.layout.width;
+  };
+
+  const fillPct = toPct(value);
+
+  return (
+    <View
+      style={sliderStyles.hit}
+      onLayout={onLayout}
+      {...responder.panHandlers}
+      accessibilityRole="adjustable"
+      accessibilityValue={{ min, max, now: value }}
+    >
+      <View style={sliderStyles.track}>
+        <View style={[sliderStyles.fill, { width: `${fillPct * 100}%`, backgroundColor: accent }]} />
+        {markers.map((m) => (
+          <View
+            key={`${m.value}-${m.label ?? ''}`}
+            pointerEvents="none"
+            style={[sliderStyles.marker, { left: `${toPct(m.value) * 100}%`, backgroundColor: m.color ?? colors.textMuted }]}
+          />
+        ))}
+        <View style={[sliderStyles.thumb, { left: `${fillPct * 100}%`, borderColor: accent }]} />
+      </View>
+    </View>
+  );
+}
+
+const sliderStyles = StyleSheet.create({
+  hit: { paddingVertical: 12, justifyContent: 'center' },
+  track: { height: 8, borderRadius: 4, backgroundColor: colors.surfaceMuted, justifyContent: 'center' },
+  fill: { position: 'absolute', left: 0, height: 8, borderRadius: 4 },
+  marker: { position: 'absolute', width: 2, height: 16, borderRadius: 1, marginLeft: -1, top: -4 },
+  thumb: {
+    position: 'absolute',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginLeft: -11,
+    backgroundColor: colors.text,
+    borderWidth: 3,
+    ...shadow.card,
+  },
+});
 
 const webInputReset = Platform.OS === 'web'
   ? ({ outlineStyle: 'none', outlineWidth: 0, boxShadow: 'none' } as any)

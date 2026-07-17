@@ -15,6 +15,7 @@ import {
   Leaf,
   Microscope,
   Minus,
+  Repeat,
   Ruler,
   Salad,
   Scale,
@@ -39,7 +40,8 @@ import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 
 import { Button, ChipGroup, Field, InlineNotice, ProgressRing, SectionHeader, StatusPill } from '@/components/ui';
 import { AnimatedNumber, DirectionalReveal, usePressMotion, useReducedMotion } from '@/components/motion';
-import { computeMacros } from '@/engine/nutrition';
+import { ProteinPicker } from '@/components/ProteinPicker';
+import { computeMacros, recommendedProteinPerKg } from '@/engine/nutrition';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
 import type {
@@ -175,7 +177,9 @@ export default function Onboarding() {
       if (!Number.isFinite(values.currentWeightKg) || values.currentWeightKg < 35 || values.currentWeightKg > 300) return 'Enter a realistic current weight.';
       if (!Number.isFinite(values.targetWeightKg) || values.targetWeightKg < 35 || values.targetWeightKg > 300) return 'Enter a realistic target weight.';
       if (form.goal === 'weight_loss' && values.targetWeightKg >= values.currentWeightKg) return 'For weight loss, target weight should be below current weight.';
-      if (form.goal === 'muscle_gain' && values.targetWeightKg <= values.currentWeightKg) return 'For muscle gain, target weight should be above current weight.';
+      if (form.goal === 'muscle_gain' && values.targetWeightKg < values.currentWeightKg) return 'For muscle gain, set a target at or above your current weight. To build muscle while losing fat, choose Body recomposition instead.';
+      // Body recomposition intentionally has no target-direction rule — you can
+      // build muscle while the scale holds steady or even drops.
       setForm((previous) => ({ ...previous, ...values }));
     }
     if (step === 3 && form.workoutDays.length < 2) return 'Choose at least two realistic workout days.';
@@ -288,6 +292,7 @@ export default function Onboarding() {
             profile={previewProfile}
             calories={previewMacros.calories}
             protein={previewMacros.proteinG}
+            metricsReady={step >= 1}
             compact={!wide}
             direction={direction}
           />
@@ -309,6 +314,13 @@ export default function Onboarding() {
                     title="Build muscle"
                     body="A controlled surplus with progressive training."
                     onPress={() => set('goal', 'muscle_gain')}
+                  />
+                  <ChoiceCard
+                    active={form.goal === 'body_recomposition'}
+                    icon={<Repeat size={22} color={form.goal === 'body_recomposition' ? colors.black : colors.accent} />}
+                    title="Recomposition"
+                    body="Build muscle and lose fat at once — eat near maintenance with high protein."
+                    onPress={() => set('goal', 'body_recomposition')}
                   />
                 </View>
                 <SectionHeader>How should your coach communicate?</SectionHeader>
@@ -419,6 +431,16 @@ export default function Onboarding() {
                 />
                 <Field label="Allergies" hint="comma separated" value={allergyText} onChangeText={setAllergyText} placeholder="Peanut, dairy" />
                 <Field label="Preferred cuisine" value={form.cuisine} onChangeText={(value) => set('cuisine', value)} placeholder="Indian, Mediterranean" />
+                <SectionHeader>Daily protein target</SectionHeader>
+                <ProteinPicker
+                  goal={form.goal}
+                  weightKg={previewProfile.currentWeightKg}
+                  value={form.proteinPerKgOverride ?? recommendedProteinPerKg(form.goal)}
+                  overridden={form.proteinPerKgOverride !== undefined}
+                  accent={STEP_ACCENTS[step].main}
+                  onChange={(value) => set('proteinPerKgOverride', value)}
+                  onReset={() => set('proteinPerKgOverride', undefined)}
+                />
               </>
             )}
 
@@ -488,6 +510,7 @@ function PlanPreview({
   profile,
   calories,
   protein,
+  metricsReady,
   compact,
   direction,
 }: {
@@ -495,6 +518,7 @@ function PlanPreview({
   profile: OnboardingProfile;
   calories: number;
   protein: number;
+  metricsReady: boolean;
   compact: boolean;
   direction: -1 | 1;
 }) {
@@ -518,12 +542,12 @@ function PlanPreview({
           <ProgressRing progress={completion} value={`${completion}%`} size={72} accent={accent} />
         </View>
         <View style={styles.previewMetrics}>
-          <PreviewMetric icon={<Flame size={15} color={colors.peach} />} value={`${calories}`} label="daily kcal" />
-          <PreviewMetric icon={<Target size={15} color={colors.accent} />} value={`${protein}g`} label="protein" />
+          <PreviewMetric icon={<Flame size={15} color={colors.peach} />} value={metricsReady ? `${calories}` : '—'} label={metricsReady ? 'daily kcal' : 'kcal — add metrics'} />
+          <PreviewMetric icon={<Target size={15} color={colors.accent} />} value={metricsReady ? `${protein}g` : '—'} label={metricsReady ? 'protein' : 'protein — add metrics'} />
           <PreviewMetric icon={<CalendarDays size={15} color={colors.success} />} value={`${profile.workoutDays.length}x`} label="per week" />
         </View>
         <View style={styles.previewInsight}>
-          <StatusPill label={profile.goal === 'weight_loss' ? 'Fat-loss track' : 'Strength track'} color={accent} />
+          <StatusPill label={profile.goal === 'weight_loss' ? 'Fat-loss track' : profile.goal === 'muscle_gain' ? 'Strength track' : 'Recomp track'} color={accent} />
           <Text style={styles.previewInsightText}>{stepInsight(step, profile)}</Text>
         </View>
       </View>
@@ -854,7 +878,7 @@ function stepSubtitle(step: number) {
 
 function previewHeadline(step: number, profile: OnboardingProfile) {
   return [
-    profile.goal === 'weight_loss' ? 'A leaner, stronger route' : 'A progressive strength route',
+    profile.goal === 'weight_loss' ? 'A leaner, stronger route' : profile.goal === 'muscle_gain' ? 'A progressive strength route' : 'A lean, muscle-building route',
     `${profile.currentWeightKg} kg to ${profile.targetWeightKg} kg`,
     `${profile.activityLevel.replace('_', ' ')} days, ${profile.experience} training`,
     `${profile.location} plan across ${profile.workoutDays.length} days`,

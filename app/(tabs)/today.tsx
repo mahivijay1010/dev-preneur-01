@@ -3,12 +3,13 @@ import {
   Camera,
   Check,
   ChevronRight,
-  CircleGauge,
   CloudOff,
   Droplets,
   Footprints,
+  Mic,
   Minus,
   Moon,
+  PlayCircle,
   Plus,
   RefreshCcw,
   ScanLine,
@@ -87,7 +88,8 @@ export default function Today() {
   const { width } = useWindowDimensions();
   const wide = width >= 940;
   const compact = width < 620;
-  const { plan, profile, user, updateTodayLog, toggleMealLogged, logs, syncStatus } = useAppStore();
+  const { plan, profile, user, updateTodayLog, toggleMealLogged, logs, syncStatus, progressPhotos } = useAppStore();
+  const photoToday = useMemo(() => progressPhotos.some((p) => p.date === todayKey()), [progressPhotos]);
   const [celebrating, setCelebrating] = useState(false);
   const day = currentWeekday();
   const log: DailyLog = logs[todayKey()] ?? { date: todayKey() };
@@ -180,13 +182,19 @@ export default function Today() {
 
             <View style={styles.exerciseList}>
               {workout && !workout.isRest ? workout.exercises.map((exercise, index) => (
-                <View key={exercise.exerciseId} style={styles.exerciseRow}>
+                <Pressable
+                  key={exercise.exerciseId}
+                  style={styles.exerciseRow}
+                  accessibilityLabel={`View ${exercise.name} demo`}
+                  onPress={() => router.push(`/exercise/${exercise.exerciseId}`)}
+                >
                   <View style={styles.exerciseNumber}><Text style={styles.exerciseNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
                   <View style={styles.exerciseCopy}>
                     <Text style={styles.exerciseName}>{exercise.name}</Text>
                     <Text style={styles.exerciseMeta}>{exercise.sets} sets × {exercise.reps} reps</Text>
                   </View>
-                </View>
+                  <PlayCircle size={20} color={colors.primary} />
+                </Pressable>
               )) : (
                 <View style={styles.restState}>
                   <Moon size={22} color={colors.accent} />
@@ -271,7 +279,10 @@ export default function Today() {
                 <Text style={styles.cardEyebrow}>QUICK LOG</Text>
                 <Text style={styles.cardTitle}>Daily signals</Text>
               </View>
-              <CircleGauge size={21} color={colors.primary} />
+              <Pressable accessibilityLabel="Log by voice" style={styles.iconCommand} onPress={() => router.push('/voice-log')}>
+                <Mic size={18} color={colors.primary} />
+                <Text style={styles.iconCommandText}>Talk to log</Text>
+              </Pressable>
             </View>
             <Stepper icon={<Weight size={18} color={colors.primary} />} label="Weight" unit="kg" step={0.1} value={round1(log.weightKg ?? profile.currentWeightKg)} onChange={(value) => updateTodayLog({ weightKg: round1(value) })} accent={colors.primary} />
             <Stepper icon={<Droplets size={18} color={colors.accent} />} label="Water" unit="ml" step={250} value={log.waterMl ?? 0} onChange={(value) => updateTodayLog({ waterMl: value })} accent={colors.accent} />
@@ -296,6 +307,17 @@ export default function Today() {
             <View style={styles.restaurantCopy}>
               <Text style={styles.restaurantTitle}>Eating out?</Text>
               <Text style={styles.restaurantSub}>Compare a restaurant dish with your target.</Text>
+            </View>
+            <ChevronRight size={19} color={colors.textDim} />
+          </Pressable>
+
+          <Pressable style={styles.photoNudge} onPress={() => router.push('/progress-photo')}>
+            <View style={[styles.photoIcon, photoToday && styles.photoIconDone]}>
+              {photoToday ? <Check size={20} color={colors.black} strokeWidth={3} /> : <Camera size={20} color={colors.black} />}
+            </View>
+            <View style={styles.restaurantCopy}>
+              <Text style={styles.restaurantTitle}>{photoToday ? 'Today’s photo captured' : 'Add today’s progress photo'}</Text>
+              <Text style={styles.restaurantSub}>{photoToday ? 'View your before/after timeline.' : 'Same pose daily — visual change is the best proof.'}</Text>
             </View>
             <ChevronRight size={19} color={colors.textDim} />
           </Pressable>
@@ -439,6 +461,9 @@ const styles = StyleSheet.create({
   scaleTextOn: { color: colors.black },
   restaurantButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
   restaurantIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.peach, alignItems: 'center', justifyContent: 'center' },
+  photoNudge: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  photoIcon: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  photoIconDone: { backgroundColor: colors.success },
   restaurantCopy: { flex: 1, gap: 2 },
   restaurantTitle: { color: colors.text, fontSize: font.small, fontWeight: '800' },
   restaurantSub: { color: colors.textDim, fontSize: font.tiny, lineHeight: 16 },

@@ -8,6 +8,7 @@ import {
   Dumbbell,
   Flame,
   MapPin,
+  PlayCircle,
   RefreshCw,
   Salad,
   ShoppingBasket,
@@ -175,6 +176,14 @@ export default function PlanScreen() {
                     <View style={styles.exerciseDetail}>
                       <Text style={styles.exerciseInstruction}>{exercise.instructions}</Text>
                       {exercise.beginnerAlternative ? <Text style={styles.exerciseAlternative}>Easier option: {exercise.beginnerAlternative}</Text> : null}
+                      <Pressable
+                        accessibilityRole="button"
+                        style={styles.demoLink}
+                        onPress={() => router.push(`/exercise/${exercise.exerciseId}`)}
+                      >
+                        <PlayCircle size={15} color={colors.primary} />
+                        <Text style={styles.demoLinkText}>Watch demo & full guide</Text>
+                      </Pressable>
                     </View>
                   ) : null}
                 </View>
@@ -289,6 +298,8 @@ const styles = StyleSheet.create({
   exerciseDetail: { marginTop: spacing.sm, gap: 5, paddingLeft: spacing.md, borderLeftWidth: 2, borderLeftColor: colors.peach },
   exerciseInstruction: { color: colors.textDim, fontSize: font.small, lineHeight: 20 },
   exerciseAlternative: { color: colors.accent, fontSize: font.tiny },
+  demoLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.xs, alignSelf: 'flex-start' },
+  demoLinkText: { color: colors.primary, fontSize: font.small, fontWeight: '800' },
   restCopy: { color: colors.textDim, fontSize: font.small, paddingVertical: spacing.lg },
   nutritionLayout: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.md },
   nutritionLayoutCompact: { flexDirection: 'column' },

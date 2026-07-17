@@ -1,6 +1,6 @@
 // Shared domain types for the FitPlan Phase 1 MVP.
 
-export type Goal = 'weight_loss' | 'muscle_gain';
+export type Goal = 'weight_loss' | 'muscle_gain' | 'body_recomposition';
 export type Sex = 'male' | 'female';
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
 export type Experience = 'beginner' | 'intermediate' | 'advanced';
@@ -62,6 +62,9 @@ export interface OnboardingProfile {
   cookingTimeMin: number;
   medicalNotes: string;
   coachTone: CoachTone;
+  // User-chosen protein intake in grams per kg of bodyweight. When unset, the
+  // goal-based recommended rate is used. Lets the user tune their own target.
+  proteinPerKgOverride?: number;
   // Phase 3 — local & lifestyle preferences (optional; enable regional planning)
   region?: Region;
   city?: string;
@@ -472,9 +475,16 @@ export interface Adjustment {
   changes: string[]; // human-readable list of what changed and why
 }
 
+// A tappable shortcut the coach can attach to a reply (e.g. "Watch demo").
+export interface CoachAction {
+  label: string;
+  route: string; // an app route to navigate to
+}
+
 export interface CoachMessage {
   id: string;
   role: 'user' | 'coach';
   text: string;
   createdAt: string;
+  actions?: CoachAction[];
 }

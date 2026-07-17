@@ -4,6 +4,7 @@
 // signal (min sample sizes) so we don't cry wolf on a single day.
 
 import type { DailyLog, HabitInsight, OnboardingProfile, Weekday } from '../types';
+import { proteinPerKg } from './nutrition';
 import { WEEKDAY_LABEL } from './week';
 
 const ORDER: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -117,6 +118,5 @@ function hasAnyEntry(l: DailyLog): boolean {
 
 function proteinTarget(profile: OnboardingProfile | null): number {
   if (!profile) return 100;
-  const perKg = profile.goal === 'weight_loss' ? 1.8 : 2.0;
-  return profile.currentWeightKg * perKg;
+  return profile.currentWeightKg * proteinPerKg(profile);
 }

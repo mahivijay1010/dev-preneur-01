@@ -25,7 +25,10 @@ interface AdjustmentDecision {
 function expectedWeeklyChange(profile: OnboardingProfile): number {
   // ~0.5% of bodyweight per week is a sustainable rate.
   const rate = 0.005 * profile.currentWeightKg;
-  return profile.goal === 'weight_loss' ? -rate : rate;
+  if (profile.goal === 'weight_loss') return -rate;
+  if (profile.goal === 'muscle_gain') return rate;
+  // Recomposition: weight should stay roughly stable, drifting slowly down.
+  return -rate * 0.4;
 }
 
 export function decideAdjustment(
@@ -50,7 +53,8 @@ export function decideAdjustment(
       const actualPerWeek = (last - first) / weeks;
       const expected = expectedWeeklyChange(profile);
 
-      if (profile.goal === 'weight_loss') {
+      if (profile.goal !== 'muscle_gain') {
+        // Weight loss / recomposition — protect muscle and energy.
         // Losing too slowly (or gaining) → reduce calories.
         if (actualPerWeek > expected * 0.5) {
           calorieDelta = -Math.min(MAX_CALORIE_STEP, 100);
@@ -92,7 +96,7 @@ export function decideAdjustment(
   if (latest.mealDifficulty >= 4) {
     changes.push('Meals were hard to follow — suggesting easier, cheaper options next week.');
   }
-  if (latest.hunger >= 4 && profile.goal === 'weight_loss') {
+  if (latest.hunger >= 4 && profile.goal !== 'muscle_gain') {
     changes.push('High hunger noted — prioritising higher-protein, higher-fibre meals to keep you full.');
   }
   if (latest.sleep <= 2 || latest.energy <= 2) {

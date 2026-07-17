@@ -6,6 +6,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { EXPERTS, expertReply, generatePlanReview } from '../data/experts';
 import { applyAdjustment, decideAdjustment } from '../engine/adjustments';
 import { generateBasePlan } from '../engine/generatePlan';
+import { computeMacros } from '../engine/nutrition';
 import { currentWeekday } from '../engine/week';
 import { personalizePlan } from '../services/claude';
 import { ApiError, authApi, setApiToken, type CloudState } from '../services/api';
@@ -130,6 +131,7 @@ interface AppState {
   saveMeasurement: (m: Measurement) => void;
   recordRepairCompleted: () => void;
   setCoachTone: (tone: CoachTone) => void;
+  setProteinPerKgOverride: (value: number | undefined) => void;
 
   // Phase 5 actions
   addProgressPhoto: (photo: Omit<ProgressPhoto, 'id'>) => void;
@@ -452,6 +454,16 @@ export const useAppStore = create<AppState>()(
         const p = get().profile;
         if (!p) return;
         set({ profile: { ...p, coachTone: tone } });
+      },
+
+      setProteinPerKgOverride: (value) => {
+        const p = get().profile;
+        if (!p) return;
+        const profile = { ...p, proteinPerKgOverride: value };
+        // Recompute macros so the protein target updates everywhere without
+        // rebuilding meals/workouts (only the numbers depend on this).
+        const plan = get().plan;
+        set(plan ? { profile, plan: { ...plan, macros: computeMacros(profile) } } : { profile });
       },
 
       addProgressPhoto: (photo) =>

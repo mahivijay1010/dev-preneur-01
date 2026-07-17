@@ -17,6 +17,8 @@ import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, Vie
 
 import { Button, Card, ChipGroup, PageHeader, ProgressRing, Screen, StatusPill } from '@/components/ui';
 import { Reveal } from '@/components/motion';
+import { ProteinPicker } from '@/components/ProteinPicker';
+import { goalLabel, recommendedProteinPerKg } from '@/engine/nutrition';
 import { isAIEnabled } from '@/services/claude';
 import { requestPermission, syncReminders } from '@/services/notifications';
 import { useAppStore } from '@/store/appStore';
@@ -35,6 +37,7 @@ export default function Profile() {
     generating,
     signOut,
     setCoachTone,
+    setProteinPerKgOverride,
     syncStatus,
     lastSyncedAt,
     syncNow,
@@ -95,7 +98,7 @@ export default function Profile() {
           </View>
           {profile ? (
             <View style={styles.setupRows}>
-              <InfoRow label="Goal" value={profile.goal === 'weight_loss' ? 'Weight loss' : 'Muscle gain'} />
+              <InfoRow label="Goal" value={goalLabel(profile.goal)} />
               <InfoRow label="Weight route" value={`${profile.currentWeightKg} → ${profile.targetWeightKg} kg`} />
               <InfoRow label="Training" value={`${capitalize(profile.location)} · ${profile.workoutDays.length} days/week`} />
               <InfoRow label="Nutrition" value={`${capitalize(profile.dietType)} · ${profile.cookingTimeMin} min`} />
@@ -126,6 +129,21 @@ export default function Profile() {
             <Text style={styles.coachPreviewText}>{coachPreview(profile?.coachTone)}</Text>
           </View>
         </Card>
+
+        {profile ? (
+          <Card tone="raised" style={styles.proteinCard}>
+            <View><Text style={styles.cardEyebrow}>NUTRITION TUNING</Text><Text style={styles.cardTitle}>Daily protein target</Text></View>
+            <Text style={styles.dim}>Slide to set your own intake. This updates your plan’s protein target instantly — calories stay the same.</Text>
+            <ProteinPicker
+              goal={profile.goal}
+              weightKg={profile.currentWeightKg}
+              value={profile.proteinPerKgOverride ?? recommendedProteinPerKg(profile.goal)}
+              overridden={profile.proteinPerKgOverride !== undefined}
+              onChange={(value) => setProteinPerKgOverride(value)}
+              onReset={() => setProteinPerKgOverride(undefined)}
+            />
+          </Card>
+        ) : null}
 
         <Card style={styles.remindersCard}>
           <View style={styles.cardHeader}>
@@ -221,6 +239,7 @@ const styles = StyleSheet.create({
   gridCompact: { flexDirection: 'column' },
   setupCard: { flexGrow: 1, flexBasis: 500 },
   coachCard: { flexGrow: 1, flexBasis: 500 },
+  proteinCard: { flexGrow: 1, flexBasis: 500, gap: spacing.sm },
   remindersCard: { flexGrow: 1, flexBasis: 500 },
   connectionsCard: { flexGrow: 1, flexBasis: 500 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },

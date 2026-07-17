@@ -15,6 +15,7 @@ import type {
   WeeklyReview,
   Confidence,
 } from '../types';
+import { proteinPerKg } from './nutrition';
 
 const KCAL_PER_KG = 7700; // energy in ~1 kg of body mass
 
@@ -226,7 +227,7 @@ function learnAdherenceDrivers(logs: DailyLog[], profile: OnboardingProfile | nu
   // Protein on days meals were logged.
   const loggedDays = logs.filter((l) => (l.mealsLogged?.length ?? 0) > 0);
   if (loggedDays.length >= 4 && profile) {
-    const target = profile.currentWeightKg * (profile.goal === 'weight_loss' ? 1.8 : 2.0);
+    const target = profile.currentWeightKg * proteinPerKg(profile);
     const hitProtein = loggedDays.filter((l) => (l.proteinG ?? 0) >= target * 0.8).length;
     if (hitProtein / loggedDays.length >= 0.6) {
       drivers.push('When you log your meals, you usually hit your protein target — logging drives the result.');
@@ -284,7 +285,9 @@ export function recommendTwinAdjustment(inp: TwinInputs): TwinAdjustment {
   const perWeek = firstAvg !== null && lastAvg !== null ? ((lastAvg - firstAvg) / span) * 7 : 0;
 
   // Expected safe weekly change (~0.5% bodyweight), signed by goal.
-  const expected = 0.005 * profile.currentWeightKg * (profile.goal === 'weight_loss' ? -1 : 1);
+  // Recomposition holds weight roughly stable (gentle downward drift).
+  const goalSign = profile.goal === 'muscle_gain' ? 1 : profile.goal === 'body_recomposition' ? -0.4 : -1;
+  const expected = 0.005 * profile.currentWeightKg * goalSign;
 
   const recentLogs = logs.slice(-10);
   const avgEnergy = mean(recentLogs.filter((l) => typeof l.energy === 'number').map((l) => l.energy!));
@@ -298,7 +301,7 @@ export function recommendTwinAdjustment(inp: TwinInputs): TwinAdjustment {
   const factors: string[] = [];
   let calorieDelta = 0;
 
-  if (profile.goal === 'weight_loss') {
+  if (profile.goal !== 'muscle_gain') {
     if (perWeek < expected * 1.6) {
       // Losing faster than the safe range.
       calorieDelta = 120;

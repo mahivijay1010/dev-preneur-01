@@ -58,8 +58,8 @@ export default function Coach() {
     addChatMessage({ role: 'user', text: question });
     setBusy(true);
     try {
-      const answer = await askCoach(question, useAppStore.getState().chat, profile, plan);
-      addChatMessage({ role: 'coach', text: answer });
+      const reply = await askCoach(question, useAppStore.getState().chat, profile, plan);
+      addChatMessage({ role: 'coach', text: reply.text, actions: reply.actions });
     } finally {
       setBusy(false);
     }
@@ -121,6 +121,21 @@ export default function Coach() {
                   {message.role === 'coach' ? <View style={styles.avatar}><Bot size={16} color={colors.black} /></View> : null}
                   <View style={[styles.bubble, message.role === 'user' ? styles.userBubble : styles.coachBubble]}>
                     <Text style={[styles.bubbleText, message.role === 'user' && styles.userBubbleText]}>{message.text}</Text>
+                    {message.role === 'coach' && message.actions?.length ? (
+                      <View style={styles.actionRow}>
+                        {message.actions.map((action) => (
+                          <Pressable
+                            key={action.route}
+                            accessibilityRole="button"
+                            style={({ pressed }) => [styles.actionChip, pressed && styles.actionChipPressed]}
+                            onPress={() => router.push(action.route as any)}
+                          >
+                            <Text style={styles.actionChipText}>{action.label}</Text>
+                            <ChevronRight size={13} color={colors.primary} />
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
                     <Text style={[styles.messageMeta, message.role === 'user' && styles.userMessageMeta]}>{message.role === 'user' ? 'You' : 'FitPlan coach'}</Text>
                   </View>
                 </Reveal>
@@ -199,14 +214,18 @@ const styles = StyleSheet.create({
   suggestionNumber: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   suggestionNumberText: { color: colors.text, fontSize: font.tiny, fontWeight: '900' },
   suggestionText: { flex: 1, color: colors.text, fontSize: font.small, fontWeight: '700', lineHeight: 19 },
-  messageRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, maxWidth: '86%' },
+  messageRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, maxWidth: '86%', alignSelf: 'flex-start' },
   messageRowUser: { alignSelf: 'flex-end', justifyContent: 'flex-end' },
-  avatar: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
-  bubble: { paddingHorizontal: spacing.md, paddingVertical: 11, borderRadius: radius.md, gap: 6 },
+  avatar: { width: 30, height: 30, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, flexShrink: 0 },
+  bubble: { flexShrink: 1, minWidth: 0, paddingHorizontal: spacing.md, paddingVertical: 11, borderRadius: radius.md, gap: 6 },
   coachBubble: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 2 },
   userBubble: { backgroundColor: colors.primary, borderBottomRightRadius: 2 },
   bubbleText: { color: colors.text, fontSize: font.small, lineHeight: 21 },
   userBubbleText: { color: colors.black },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: 4 },
+  actionChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primaryDim },
+  actionChipPressed: { opacity: 0.7 },
+  actionChipText: { color: colors.primary, fontSize: font.tiny, fontWeight: '800' },
   messageMeta: { color: colors.textMuted, fontSize: 9, fontWeight: '700' },
   userMessageMeta: { color: '#4A5B25' },
   typing: { flexDirection: 'row', alignItems: 'center' },

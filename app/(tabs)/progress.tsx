@@ -21,6 +21,7 @@ import { AnimatedNumber } from '@/components/motion';
 import { computeAdherence } from '@/engine/adherence';
 import { detectHabits } from '@/engine/habits';
 import { computeMilestones } from '@/engine/milestones';
+import { goalLabel } from '@/engine/nutrition';
 import { summarize } from '@/engine/progress';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, radius, spacing } from '@/theme';
@@ -64,7 +65,7 @@ export default function Progress() {
       <PageHeader
         eyebrow="YOUR MOMENTUM"
         title="Progress you can actually read."
-        subtitle={`${profile.goal === 'weight_loss' ? 'Weight loss' : 'Muscle gain'} · ${profile.targetWeightKg} kg target · ${distance} kg remaining`}
+        subtitle={`${goalLabel(profile.goal)} · ${profile.targetWeightKg} kg target · ${distance} kg remaining`}
         action={<StatusPill label={`${adherence.band} consistency`} color={BAND_COLOR[adherence.band]} icon={<Sparkles size={13} color={BAND_COLOR[adherence.band]} />} />}
       />
 
