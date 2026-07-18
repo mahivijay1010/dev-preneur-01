@@ -45,6 +45,9 @@ export function Screen({
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          // Central keyboard fix: keeps focused inputs visible above the iOS
+          // keyboard on every Screen-based form (Android resizes natively).
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
         >
           {content}
         </ScrollView>
@@ -482,6 +485,10 @@ export function Slider({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e) => onChangeRef.current(fromX(e.nativeEvent.locationX)),
       onPanResponderMove: (e) => onChangeRef.current(fromX(e.nativeEvent.locationX)),
+      // Keep the drag once granted — otherwise a parent ScrollView steals the
+      // gesture on iOS/Android and cancels the slide mid-drag.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
     }),
   ).current;
 

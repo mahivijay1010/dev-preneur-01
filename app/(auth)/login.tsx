@@ -16,8 +16,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AuroraBackdrop, Gradient, TiltCard } from '@/components/depth';
-import { DirectionalReveal, FloatingLayer, Reveal, useReducedMotion } from '@/components/motion';
+import { AnimatedBorder, AuroraBackdrop, GlowPulse, Gradient, Parallax, ParticleField, TiltCard } from '@/components/depth';
+import { AnimatedNumber, DirectionalReveal, FloatingLayer, Reveal, StaggerText, useReducedMotion } from '@/components/motion';
 import { Button, Field, InlineNotice } from '@/components/ui';
 import { useAppStore } from '@/store/appStore';
 import { colors, font, glass, gradients, radius, shadow, spacing } from '@/theme';
@@ -70,7 +70,9 @@ export default function Login() {
             {/* Cinematic scrim for legibility + depth */}
             <Gradient colors={gradients.heroScrim} direction="vertical" locations={[0, 0.5, 1]} />
             <View style={[styles.tintLime]} pointerEvents="none" />
-            <View style={styles.visualOverlay}>
+            {/* Fewer loops on native phones to protect 60fps on mid-range Android. */}
+            <ParticleField count={Platform.OS === 'web' ? (desktop ? 18 : 10) : 6} />
+            <Parallax strength={9} style={styles.flex} contentStyle={styles.visualOverlay}>
               <FloatingLayer distance={5} duration={5000} style={styles.brandRow}>
                 <View style={styles.brandMark}>
                   <Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} />
@@ -79,24 +81,28 @@ export default function Login() {
                 <Text style={styles.brand}>FITPLAN</Text>
               </FloatingLayer>
               {desktop ? <AuthSignals /> : null}
-              <Reveal delay={120} distance={28} style={styles.visualCopy}>
-                <Text style={[styles.visualTitle, !desktop && styles.visualTitleMobile]}>
-                  Train for the life{desktop ? '\n' : ' '}you actually <Text style={styles.visualTitleAccent}>live.</Text>
-                </Text>
+              <Reveal delay={80} distance={28} style={styles.visualCopy}>
+                <StaggerText
+                  text={desktop ? 'Train for the life\nyou actually live.' : 'Train for the life you actually live.'}
+                  accentWords={['live.']}
+                  delay={220}
+                  stagger={90}
+                  style={[styles.visualTitle, !desktop && styles.visualTitleMobile]}
+                />
                 {desktop ? (
                   <>
                     <Text style={styles.visualSub}>A precise week of training and meals that recalibrates around your real schedule.</Text>
                     <View style={styles.visualStats}>
-                      <HeroStat value="03" label="TRAINING DAYS" />
+                      <HeroStat value={3} label="TRAINING DAYS" />
                       <View style={styles.visualStatDivider} />
-                      <HeroStat value="07" label="ADAPTIVE DAYS" />
+                      <HeroStat value={7} label="ADAPTIVE DAYS" />
                       <View style={styles.visualStatDivider} />
-                      <HeroStat value="01" label="PLAN THAT LEARNS" />
+                      <HeroStat value={1} label="PLAN THAT LEARNS" />
                     </View>
                   </>
                 ) : null}
               </Reveal>
-            </View>
+            </Parallax>
           </ImageBackground>
 
           <ScrollView
@@ -106,15 +112,19 @@ export default function Login() {
             showsVerticalScrollIndicator={false}
           >
             <Reveal delay={90} distance={24} style={styles.formOuter}>
-              <View style={styles.formCard}>
+              <AnimatedBorder radius={radius.lg} fill="rgba(17,20,17,0.965)" speed={9000}>
+                <View style={styles.formCard}>
                 <Gradient colors={['rgba(255,255,255,0.06)', 'rgba(255,255,255,0)']} direction="vertical" locations={[0, 0.5]} radius={radius.lg} />
                 <View style={styles.form}>
                   <View style={styles.formHeader}>
                     <Text style={styles.eyebrow}>{mode === 'register' ? 'START YOUR PLAN' : 'WELCOME BACK'}</Text>
-                    <Text style={styles.title}>
-                      {mode === 'register' ? 'A plan that ' : 'Pick up where '}
-                      <Text style={styles.titleAccent}>{mode === 'register' ? 'adapts to you.' : 'you left off.'}</Text>
-                    </Text>
+                    <StaggerText
+                      key={mode}
+                      text={mode === 'register' ? 'A plan that adapts to you.' : 'Pick up where you left off.'}
+                      accentWords={mode === 'register' ? ['adapts', 'to', 'you.'] : ['you', 'left', 'off.']}
+                      stagger={55}
+                      style={styles.title}
+                    />
                     <Text style={styles.subtitle}>
                       {mode === 'register'
                         ? 'Create your account, then tell us how you train and eat.'
@@ -176,12 +186,14 @@ export default function Login() {
 
                   {authError ? <InlineNotice tone="danger">{authError}</InlineNotice> : null}
 
-                  <Button
-                    label={mode === 'register' ? 'Create my account' : 'Sign in'}
-                    onPress={submit}
-                    loading={authLoading}
-                    icon={<LockKeyhole size={18} color={colors.black} />}
-                  />
+                  <GlowPulse color={colors.primary} radius={radius.md} intensity={0.3}>
+                    <Button
+                      label={mode === 'register' ? 'Create my account' : 'Sign in'}
+                      onPress={submit}
+                      loading={authLoading}
+                      icon={<LockKeyhole size={18} color={colors.black} />}
+                    />
+                  </GlowPulse>
 
                   <View style={styles.securityRow}>
                     <ShieldCheck size={16} color={colors.success} />
@@ -194,7 +206,8 @@ export default function Login() {
                     <EntrySignal color={colors.success} label="Cloud synced" />
                   </View>
                 </View>
-              </View>
+                </View>
+              </AnimatedBorder>
             </Reveal>
           </ScrollView>
         </View>
@@ -203,10 +216,10 @@ export default function Login() {
   );
 }
 
-function HeroStat({ value, label }: { value: string; label: string }) {
+function HeroStat({ value, label }: { value: number; label: string }) {
   return (
     <View style={styles.visualStat}>
-      <Text style={styles.visualStatValue}>{value}</Text>
+      <AnimatedNumber value={value} prefix="0" duration={1400} style={styles.visualStatValue} />
       <Text style={styles.visualStatLabel}>{label}</Text>
     </View>
   );
@@ -345,12 +358,10 @@ const styles = StyleSheet.create({
   formScrollContent: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl },
   formScrollContentMobile: { padding: spacing.lg, justifyContent: 'flex-start', paddingTop: spacing.xl },
   formOuter: { width: '100%', maxWidth: 520, alignSelf: 'center' },
+  // Fill + border ring now come from the AnimatedBorder wrapper.
   formCard: {
     borderRadius: radius.lg,
     padding: spacing.xl,
-    backgroundColor: glass.fillStrong,
-    borderWidth: 1,
-    borderColor: glass.borderStrong,
     overflow: 'hidden',
     gap: spacing.lg,
   },

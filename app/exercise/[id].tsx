@@ -1,14 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ListOrdered, ScanLine, Target } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ArrowLeft, CheckCircle2, ListOrdered, ScanLine, Target, TriangleAlert, X } from 'lucide-react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Animated, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
 
-import { useReducedMotion } from '@/components/motion';
-import { Button, Card, Screen, SectionHeader, Subtitle, Title } from '@/components/ui';
+import { Gradient, GlowPulse } from '@/components/depth';
+import { AnimatedNumber, Reveal, StaggerText, usePressMotion, useReducedMotion } from '@/components/motion';
+import { Button, Card, PageHeader, Screen, SectionHeader, StatusPill } from '@/components/ui';
 import { EXERCISES } from '@/data/exercises';
 import { FORM_GUIDES } from '@/data/formCues';
-import { colors, font, radius, spacing } from '@/theme';
+import { colors, font, gradients, radius, spacing } from '@/theme';
 import type { FormExercise } from '@/types';
 
 type Joint = 'head' | 'shoulder' | 'elbow' | 'hand' | 'hip' | 'knee' | 'ankle';
@@ -64,6 +65,11 @@ const MUSCLES: Record<DemoKind, string> = {
   curl: 'Biceps and forearms',
 };
 
+// The joint that travels most during the movement — the range-of-motion focus.
+const WORKING_JOINT: Record<DemoKind, Joint> = {
+  squat: 'hip', lunge: 'hip', curl: 'elbow', press: 'elbow', pushup: 'shoulder', plank: 'shoulder',
+};
+
 function demoKindFor(name: string): DemoKind {
   const n = name.toLowerCase();
   if (/shoulder press|overhead|ohp|military|push press/.test(n)) return 'press';
@@ -84,14 +90,20 @@ function toSteps(instructions: string): string[] {
 
 export default function ExerciseDemo() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= 860;
   const { id } = useLocalSearchParams<{ id: string }>();
   const exercise = EXERCISES.find((e) => e.id === id);
 
   if (!exercise) {
     return (
       <Screen>
-        <Title>Exercise not found</Title>
-        <Subtitle>We couldn’t find that movement. Head back and pick another.</Subtitle>
+        <PageHeader
+          eyebrow="MOVEMENT LIBRARY"
+          title="Exercise not found"
+          subtitle="We couldn’t find that movement. Head back and pick another."
+          action={<CloseButton onPress={() => router.back()} />}
+        />
         <Button label="Back" variant="ghost" icon={<ArrowLeft size={18} color={colors.text} />} onPress={() => router.back()} />
       </Screen>
     );
@@ -100,56 +112,112 @@ export default function ExerciseDemo() {
   const kind = demoKindFor(exercise.name);
   const guide = FORM_GUIDES[FORM_FOR_KIND[kind]];
   const steps = toSteps(exercise.instructions);
+  const lastWord = exercise.name.trim().split(/\s+/).at(-1) ?? exercise.name;
+
+  const figure = <FigureDemo kind={kind} />;
+
+  const formCuesCard = (
+    <Card tone="raised">
+      <View style={styles.rowHead}><View><Target size={17} color={colors.success} /></View><Text style={styles.rowHeadText}>Form cues · tempo {guide.tempo}</Text></View>
+      {guide.cues.map((c, i) => (
+        <View key={i} style={styles.cueRow}>
+          <CheckCircle2 size={14} color={colors.success} />
+          <Text style={styles.cue}>{c}</Text>
+        </View>
+      ))}
+    </Card>
+  );
+
+  const howToCard = (
+    <Card tone="raised">
+      <View style={styles.rowHead}><View><ListOrdered size={17} color={colors.primary} /></View><Text style={styles.rowHeadText}>How to perform</Text></View>
+      {steps.map((s, i) => (
+        <View key={i} style={styles.stepRow}>
+          <View style={styles.stepNum}><Text style={styles.stepNumText}>{i + 1}</Text></View>
+          <Text style={styles.stepText}>{s}</Text>
+        </View>
+      ))}
+    </Card>
+  );
+
+  const mistakesCard = (
+    <Card tone="raised" style={styles.mistakesCard}>
+      <View style={styles.rowHead}><View><TriangleAlert size={17} color={colors.warning} /></View><Text style={styles.rowHeadText}>Common mistakes</Text></View>
+      {guide.warnings.map((w, i) => (
+        <Reveal key={i} delay={60 + i * 70}>
+          <View style={styles.mistakeRow}>
+            <View style={styles.mistakeIcon}><TriangleAlert size={14} color={colors.warning} /></View>
+            <Text style={styles.mistakeIndex}>{String(i + 1).padStart(2, '0')}</Text>
+            <Text style={styles.mistakeText}>{w}</Text>
+          </View>
+        </Reveal>
+      ))}
+    </Card>
+  );
+
+  const easierCard = exercise.beginnerAlternative ? (
+    <Card>
+      <SectionHeader>Easier option</SectionHeader>
+      <Text style={styles.cue}>{exercise.beginnerAlternative}</Text>
+    </Card>
+  ) : null;
 
   return (
-    <Screen>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={styles.close}>✕</Text>
-        </Pressable>
-      </View>
-      <Title>{exercise.name}</Title>
-      <Subtitle>{MUSCLES[kind]} · {exercise.defaultSets} sets × {exercise.defaultReps} · rest {exercise.restSec}s</Subtitle>
+    <Screen maxWidth={1080}>
+      <Reveal style={[styles.header, !wide && styles.headerCompact]}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.headerEyebrow}>MOVEMENT LIBRARY</Text>
+          <StaggerText text={exercise.name} accentWords={[lastWord]} stagger={55} style={styles.headerTitle} />
+          <Text style={styles.headerSubtitle}>{MUSCLES[kind]}</Text>
+        </View>
+        <View style={!wide ? styles.headerActionCompact : null}>
+          <CloseButton onPress={() => router.back()} />
+        </View>
+      </Reveal>
 
-      <FigureDemo kind={kind} />
+      <Reveal delay={40} style={styles.metaRow}>
+        <MetaStat label="SETS" accent={colors.primary}><AnimatedNumber value={exercise.defaultSets} style={styles.metaValue} /></MetaStat>
+        <MetaStat label="REPS" accent={colors.accent}><Text style={styles.metaValue}>{exercise.defaultReps}</Text></MetaStat>
+        <MetaStat label="REST" accent={colors.peach}><AnimatedNumber value={exercise.restSec} suffix="s" style={styles.metaValue} /></MetaStat>
+      </Reveal>
 
-      <Card>
-        <View style={styles.rowHead}><ListOrdered size={17} color={colors.primary} /><Text style={styles.rowHeadText}>How to perform</Text></View>
-        {steps.map((s, i) => (
-          <View key={i} style={styles.stepRow}>
-            <View style={styles.stepNum}><Text style={styles.stepNumText}>{i + 1}</Text></View>
-            <Text style={styles.stepText}>{s}</Text>
-          </View>
-        ))}
-      </Card>
-
-      <Card>
-        <View style={styles.rowHead}><Target size={17} color={colors.success} /><Text style={styles.rowHeadText}>Form cues · tempo {guide.tempo}</Text></View>
-        {guide.cues.map((c, i) => (
-          <View key={i} style={styles.cueRow}>
-            <CheckCircle2 size={14} color={colors.success} />
-            <Text style={styles.cue}>{c}</Text>
-          </View>
-        ))}
-      </Card>
-
-      <Card>
-        <View style={styles.rowHead}><AlertTriangle size={17} color={colors.warning} /><Text style={styles.rowHeadText}>Common mistakes</Text></View>
-        {guide.warnings.map((w, i) => (
-          <Text key={i} style={styles.warn}>• {w}</Text>
-        ))}
-      </Card>
-
-      {exercise.beginnerAlternative ? (
-        <Card>
-          <SectionHeader>Easier option</SectionHeader>
-          <Text style={styles.cue}>{exercise.beginnerAlternative}</Text>
-        </Card>
-      ) : null}
+      {wide ? (
+        <View style={styles.columns}>
+          <View style={styles.leftCol}>{figure}{formCuesCard}</View>
+          <View style={styles.rightCol}>{howToCard}{mistakesCard}{easierCard}</View>
+        </View>
+      ) : (
+        <>
+          {figure}
+          {howToCard}
+          {formCuesCard}
+          {mistakesCard}
+          {easierCard}
+        </>
+      )}
 
       <Button label="Check my form with a photo" icon={<ScanLine size={18} color={colors.black} />} onPress={() => router.push('/form-check')} />
       <Text style={styles.disclaimer}>General coaching guidance — not a medical assessment. Stop if anything hurts.</Text>
     </Screen>
+  );
+}
+
+function MetaStat({ label, accent, children }: { label: string; accent: string; children: ReactNode }) {
+  return (
+    <View style={styles.metaStat}>
+      <View style={[styles.metaMarker, { backgroundColor: accent }]} />
+      <Text style={styles.metaLabel}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+function CloseButton({ onPress }: { onPress: () => void }) {
+  const { animatedStyle, pressHandlers } = usePressMotion();
+  return (
+    <Pressable accessibilityLabel="Close exercise detail" onPress={onPress} {...pressHandlers}>
+      <Animated.View style={[styles.closeButton, animatedStyle]}><X size={21} color={colors.text} /></Animated.View>
+    </Pressable>
   );
 }
 
@@ -159,11 +227,19 @@ function FigureDemo({ kind }: { kind: DemoKind }) {
   const reduced = useReducedMotion();
   const t = useRef(new Animated.Value(0)).current;
   const [frame, setFrame] = useState(reduced ? 0.5 : 0);
+  const lastFrame = useRef(reduced ? 0.5 : 0);
   const { start, end, label } = POSES[kind];
+  const workingJoint = WORKING_JOINT[kind];
 
   useEffect(() => {
     if (reduced) { setFrame(0.5); return; }
-    const id = t.addListener(({ value }) => setFrame(value));
+    // Throttle: only re-render the SVG when the frame moved a visible amount,
+    // cutting ~60 setState/s down to ~20-30 with no visible difference.
+    const id = t.addListener(({ value }) => {
+      if (Math.abs(value - lastFrame.current) < 0.03) return;
+      lastFrame.current = value;
+      setFrame(value);
+    });
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(t, { toValue: 1, duration: 1300, useNativeDriver: false }),
@@ -186,10 +262,30 @@ function FigureDemo({ kind }: { kind: DemoKind }) {
     />
   );
 
+  // Range-of-motion ghost: the start pose, drawn faintly behind the live figure.
+  const ghost = (a: Joint, b: Joint, width = 5) => (
+    <Line
+      x1={start[a][0]} y1={start[a][1]} x2={start[b][0]} y2={start[b][1]}
+      stroke={colors.border} strokeWidth={width} strokeLinecap="round" opacity={0.5}
+    />
+  );
+
   return (
-    <View style={styles.figureCard}>
+    <Card tone="raised" style={styles.figureCard}>
+      <Gradient colors={gradients.surfaceGlass} direction="vertical" radius={radius.lg} opacity={0.5} />
+      <View style={styles.figureGlow} pointerEvents="none">
+        <GlowPulse color={colors.primary} radius={40} intensity={0.16} style={styles.figureGlowInner}><View /></GlowPulse>
+      </View>
       <Svg viewBox="0 0 120 130" style={styles.figure}>
         <Line x1={0} y1={124} x2={120} y2={124} stroke={colors.border} strokeWidth={2} />
+        {/* Ghost start-pose skeleton behind the animated figure */}
+        {ghost('shoulder', 'hip', 6)}
+        {ghost('hip', 'knee')}{ghost('knee', 'ankle')}
+        {ghost('shoulder', 'elbow')}{ghost('elbow', 'hand')}
+        {ghost('head', 'shoulder', 4)}
+        <Circle cx={start.head[0]} cy={start.head[1]} r={9} fill="none" stroke={colors.border} strokeWidth={2} opacity={0.5} />
+        {/* Working-joint halo — breathes with the movement (no extra loop) */}
+        <Circle cx={co(workingJoint, 0)} cy={co(workingJoint, 1)} r={9 + frame * 5} fill={colors.primary} opacity={0.12 + frame * 0.16} />
         {bone('shoulder', 'hip', 6)}{/* torso */}
         {bone('hip', 'knee')}{bone('knee', 'ankle')}{/* leg */}
         {bone('shoulder', 'elbow')}{bone('elbow', 'hand')}{/* arm */}
@@ -197,24 +293,37 @@ function FigureDemo({ kind }: { kind: DemoKind }) {
         <Circle cx={co('head', 0)} cy={co('head', 1)} r={9} fill={colors.primary} />
       </Svg>
       <View style={styles.figureLabels}>
-        <View style={styles.figureLabel}><View style={[styles.figureDot, { backgroundColor: colors.textMuted }]} /><Text style={styles.figureLabelText}>{label[0]}</Text></View>
+        <StatusPill label={label[0]} color={frame < 0.5 ? colors.accent : colors.textMuted} />
         <Text style={styles.figureArrow}>→</Text>
-        <View style={styles.figureLabel}><View style={[styles.figureDot, { backgroundColor: colors.primary }]} /><Text style={styles.figureLabelText}>{label[1]}</Text></View>
+        <StatusPill label={label[1]} color={frame >= 0.5 ? colors.primary : colors.textMuted} />
       </View>
-      <Text style={styles.figureHint}>Loops through the movement so you can match the range and tempo.</Text>
-    </View>
+      <Text style={styles.figureHint}>The faint outline is your starting position — match the range and tempo of the lit figure.</Text>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', justifyContent: 'flex-end' },
-  close: { color: colors.textDim, fontSize: 22, fontWeight: '700' },
-  figureCard: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, padding: spacing.md, gap: spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.lg },
+  headerCompact: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.sm },
+  headerCopy: { flex: 1, gap: spacing.xs },
+  headerActionCompact: { alignSelf: 'flex-start' },
+  headerEyebrow: { color: colors.primary, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4 },
+  headerTitle: { color: colors.text, fontSize: font.h1, fontWeight: '800', lineHeight: 36 },
+  headerSubtitle: { color: colors.textDim, fontSize: font.body, lineHeight: 22, maxWidth: 680 },
+  closeButton: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+  metaRow: { flexDirection: 'row', gap: spacing.sm },
+  metaStat: { flex: 1, minHeight: 88, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 3 },
+  metaMarker: { width: 24, height: 3, borderRadius: 2, marginBottom: spacing.sm },
+  metaLabel: { color: colors.textDim, fontSize: font.tiny, textTransform: 'uppercase', letterSpacing: 0.8 },
+  metaValue: { color: colors.text, fontSize: font.h2, fontWeight: '900' },
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
+  leftCol: { flex: 1, gap: spacing.lg },
+  rightCol: { flex: 1, gap: spacing.lg },
+  figureCard: { minHeight: 300, gap: spacing.sm },
+  figureGlow: { position: 'absolute', left: 0, right: 0, bottom: spacing.xl, alignItems: 'center' },
+  figureGlowInner: { width: 170, height: 46, borderRadius: 40 },
   figure: { width: '100%', height: 240 },
-  figureLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
-  figureLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  figureDot: { width: 9, height: 9, borderRadius: 5 },
-  figureLabelText: { color: colors.textDim, fontSize: font.small, fontWeight: '700' },
+  figureLabels: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, flexWrap: 'wrap' },
   figureArrow: { color: colors.textMuted, fontSize: font.body, fontWeight: '800' },
   figureHint: { color: colors.textMuted, fontSize: font.tiny, textAlign: 'center' },
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
@@ -225,6 +334,10 @@ const styles = StyleSheet.create({
   stepText: { flex: 1, color: colors.text, fontSize: font.small, lineHeight: 21 },
   cueRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 3 },
   cue: { flex: 1, color: colors.textDim, fontSize: font.small, lineHeight: 22 },
-  warn: { color: colors.warning, fontSize: font.small, lineHeight: 21 },
+  mistakesCard: { backgroundColor: colors.warningDim, borderColor: `${colors.warning}33` },
+  mistakeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 4 },
+  mistakeIcon: { width: 26, height: 26, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  mistakeIndex: { color: colors.warning, fontSize: font.tiny, fontWeight: '900', paddingTop: 6 },
+  mistakeText: { flex: 1, color: colors.text, fontSize: font.small, lineHeight: 21, paddingTop: 4 },
   disclaimer: { color: colors.textDim, fontSize: font.tiny, fontStyle: 'italic', textAlign: 'center' },
 });

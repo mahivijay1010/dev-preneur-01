@@ -128,6 +128,7 @@ export default function Coach() {
                           <Pressable
                             key={action.route}
                             accessibilityRole="button"
+                            hitSlop={8}
                             style={({ pressed }) => [styles.actionChip, pressed && styles.actionChipPressed]}
                             onPress={() => router.push(action.route as any)}
                           >

@@ -54,10 +54,10 @@ function Stepper({
         <Text style={styles.metricValue}>{value}<Text style={styles.metricUnit}> {unit}</Text></Text>
       </View>
       <View style={styles.stepActions}>
-        <Pressable accessibilityLabel={`Decrease ${label}`} style={styles.iconButton} onPress={() => onChange(Math.max(0, value - step))}>
+        <Pressable accessibilityLabel={`Decrease ${label}`} hitSlop={6} style={styles.iconButton} onPress={() => onChange(Math.max(0, value - step))}>
           <Minus size={16} color={colors.text} />
         </Pressable>
-        <Pressable accessibilityLabel={`Increase ${label}`} style={styles.iconButton} onPress={() => onChange(value + step)}>
+        <Pressable accessibilityLabel={`Increase ${label}`} hitSlop={6} style={styles.iconButton} onPress={() => onChange(value + step)}>
           <Plus size={16} color={colors.text} />
         </Pressable>
       </View>

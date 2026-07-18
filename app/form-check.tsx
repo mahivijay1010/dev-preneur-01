@@ -1,21 +1,45 @@
 import { useRouter } from 'expo-router';
-import { CheckCircle2, Minus, Pause, Play, Plus, RotateCcw, ScanLine, TriangleAlert, X } from 'lucide-react-native';
+import { ArrowRight, CheckCircle2, Minus, Pause, Play, Plus, RotateCcw, ScanLine, TriangleAlert, X } from 'lucide-react-native';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { CaptureButtons } from '@/components/CaptureButtons';
-import { EnergyLoader, Reveal, useReducedMotion } from '@/components/motion';
-import { ChipGroup, PageHeader, Screen } from '@/components/ui';
+import { Gradient, GlowPulse, ShineSweep } from '@/components/depth';
+import { AnimatedNumber, EnergyLoader, Reveal, StaggerText, usePressMotion, useReducedMotion } from '@/components/motion';
+import { Card, ChipGroup, Screen, StatusPill } from '@/components/ui';
 import { FORM_EXERCISES, FORM_GUIDES } from '@/data/formCues';
 import type { PickedImage } from '@/services/imagePicker';
 import { checkForm, isVisionEnabled } from '@/services/vision';
-import { colors, font, radius, shadow, spacing } from '@/theme';
-import type { FormExercise, FormFeedback } from '@/types';
+import { colors, font, gradients, radius, shadow, spacing } from '@/theme';
+import type { Confidence, FormExercise, FormFeedback } from '@/types';
+
+const CONFIDENCE_COLOR: Record<Confidence, string> = {
+  high: colors.success,
+  medium: colors.warning,
+  low: colors.textDim,
+};
+
+// Derive phase durations from the printed tempo (e.g. "2s down · 1s up") so the
+// pulse actually matches the coaching copy. Falls back gently for hold-style tempos.
+function tempoDurations(tempo: string): Record<'lower' | 'hold' | 'drive', number> {
+  const seconds = (pattern: RegExp) => {
+    const match = pattern.exec(tempo);
+    if (!match) return 1100;
+    return Math.min(4000, Math.max(500, Number.parseFloat(match[1]) * 1000));
+  };
+  return {
+    lower: seconds(/([\d.]+)\s*s\s*down/i),
+    drive: seconds(/([\d.]+)\s*s\s*up/i),
+    hold: 650,
+  };
+}
 
 export default function FormCheck() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 860;
+  const compactHeader = width < 700;
+  const reduced = useReducedMotion();
   const [exercise, setExercise] = useState<FormExercise>('squat');
   const [image, setImage] = useState<PickedImage | null>(null);
   const [busy, setBusy] = useState(false);
@@ -23,26 +47,32 @@ export default function FormCheck() {
   const [reps, setReps] = useState(0);
   const [tempoOn, setTempoOn] = useState(false);
   const [phase, setPhase] = useState<'lower' | 'hold' | 'drive'>('lower');
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const guide = FORM_GUIDES[exercise];
 
   useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
     if (!tempoOn) {
-      if (timer.current) clearInterval(timer.current);
-      timer.current = null;
       setPhase('lower');
       return;
     }
+    const durations = tempoDurations(guide.tempo);
     const phases: ('lower' | 'hold' | 'drive')[] = ['lower', 'hold', 'drive'];
     let index = 0;
-    timer.current = setInterval(() => {
-      index = (index + 1) % phases.length;
-      setPhase(phases[index]);
-    }, 1100);
-    return () => {
-      if (timer.current) clearInterval(timer.current);
+    setPhase('lower');
+    const schedule = () => {
+      timer.current = setTimeout(() => {
+        index = (index + 1) % phases.length;
+        setPhase(phases[index]);
+        schedule();
+      }, durations[phases[index]]);
     };
-  }, [tempoOn]);
+    schedule();
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [tempoOn, guide.tempo]);
 
   const analyze = async (picked: PickedImage) => {
     setImage(picked);
@@ -58,12 +88,16 @@ export default function FormCheck() {
 
   return (
     <Screen maxWidth={1080}>
-      <PageHeader
-        eyebrow="MOVEMENT LAB"
-        title="See the rep before you repeat it."
-        subtitle="Use a clear tempo, focused cues, and a mid-rep photo to make each set more intentional."
-        action={<CloseButton onPress={() => router.back()} />}
-      />
+      <Reveal style={[styles.header, compactHeader && styles.headerCompact]}>
+        <View style={styles.headerCopy}>
+          <Text style={styles.headerEyebrow}>MOVEMENT LAB</Text>
+          <StaggerText text="See the rep before you repeat it." accentWords={['rep']} stagger={55} style={styles.headerTitle} />
+          <Text style={styles.headerSubtitle}>Use a clear tempo, focused cues, and a mid-rep photo to make each set more intentional.</Text>
+        </View>
+        <View style={compactHeader ? styles.headerActionCompact : null}>
+          <CloseButton onPress={() => router.back()} />
+        </View>
+      </Reveal>
 
       <Reveal delay={40} style={styles.exerciseBand}>
         <View>
@@ -80,8 +114,11 @@ export default function FormCheck() {
       <View style={[styles.stage, !wide && styles.stageStack]}>
         <Reveal delay={80} style={styles.visualStage}>
           <Image source={require('../assets/images/form-check-guide-v1.png')} style={styles.guideImage} resizeMode="cover" />
-          <View style={styles.visualScrim} />
-          <View style={styles.visualBadge}><ScanLine size={15} color={colors.black} /><Text style={styles.visualBadgeText}>ALIGNMENT VIEW</Text></View>
+          <Gradient colors={gradients.heroScrim} direction="vertical" locations={[0, 0.5, 1]} />
+          {/* Tempo scan-line: a light band sweeps the alignment photo once per
+              lower–hold–drive cycle while the guided tempo runs. */}
+          {tempoOn && !reduced ? <ShineSweep interval={3300} delay={0} /> : null}
+          <View style={styles.visualBadge}><View><ScanLine size={15} color={colors.black} /></View><Text style={styles.visualBadgeText}>ALIGNMENT VIEW</Text></View>
           <View style={styles.visualCopy}>
             <Text style={styles.visualTitle}>Own the hard position.</Text>
             <Text style={styles.visualSub}>Keep your full body visible and capture the point where control matters most.</Text>
@@ -100,7 +137,7 @@ export default function FormCheck() {
           <View style={styles.repStation}>
             <View>
               <Text style={styles.repLabel}>REPETITIONS</Text>
-              <Text style={styles.repValue}>{String(reps).padStart(2, '0')}</Text>
+              <AnimatedNumber value={reps} duration={300} style={styles.repValue} />
             </View>
             <View style={styles.repActions}>
               <IconAction label="Decrease repetitions" icon={<Minus size={20} color={colors.text} />} onPress={() => setReps((value) => Math.max(0, value - 1))} />
@@ -109,10 +146,7 @@ export default function FormCheck() {
             </View>
           </View>
 
-          <Pressable style={[styles.tempoButton, tempoOn && styles.tempoButtonOn]} onPress={() => setTempoOn((value) => !value)}>
-            {tempoOn ? <Pause size={19} color={colors.black} /> : <Play size={19} color={colors.black} />}
-            <Text style={styles.tempoButtonText}>{tempoOn ? `Pause ${phase}` : 'Start guided tempo'}</Text>
-          </Pressable>
+          <TempoButton on={tempoOn} phase={phase} onPress={() => setTempoOn((value) => !value)} />
           <Text style={styles.safetyCopy}>Move within a pain-free range. Tempo is a guide, not a test.</Text>
         </Reveal>
       </View>
@@ -150,21 +184,33 @@ export default function FormCheck() {
 }
 
 function TempoPulse({ active, phase }: { active: boolean; phase: 'lower' | 'hold' | 'drive' }) {
-  const reduced = useReducedMotion();
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!active || reduced) {
-      pulse.setValue(0);
-      return;
-    }
-    pulse.setValue(0);
-    Animated.spring(pulse, { toValue: 1, damping: 10, stiffness: 160, useNativeDriver: true }).start();
-  }, [active, phase, pulse, reduced]);
+  const phaseColor = phase === 'drive' ? colors.primary : phase === 'hold' ? colors.peach : colors.accent;
   return (
     <View style={styles.pulseShell}>
-      <Animated.View style={[styles.pulseHalo, { transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.25] }) }], opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] }) }]} />
-      <View style={[styles.pulseCore, active && styles.pulseCoreOn]}><Text style={[styles.pulseText, active && styles.pulseTextOn]}>{active ? phase.toUpperCase() : 'READY'}</Text></View>
+      <GlowPulse color={phaseColor} radius={34} intensity={active ? 0.45 : 0} style={styles.pulseGlow}>
+        <View style={[styles.pulseCore, active && styles.pulseCoreOn]}>
+          <Text style={[styles.pulseText, active && styles.pulseTextOn]}>{active ? phase.toUpperCase() : 'READY'}</Text>
+        </View>
+      </GlowPulse>
     </View>
+  );
+}
+
+function TempoButton({ on, phase, onPress }: { on: boolean; phase: 'lower' | 'hold' | 'drive'; onPress: () => void }) {
+  const { animatedStyle, pressHandlers } = usePressMotion();
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={on ? 'Pause guided tempo' : 'Start guided tempo'}
+        style={[styles.tempoButton, on && styles.tempoButtonOn]}
+        onPress={onPress}
+        {...pressHandlers}
+      >
+        {on ? <Pause size={19} color={colors.black} /> : <Play size={19} color={colors.black} />}
+        <Text style={styles.tempoButtonText}>{on ? `Pause ${phase}` : 'Start guided tempo'}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -173,20 +219,53 @@ function Cue({ index, text, warning = false }: { index: number; text: string; wa
 }
 
 function FeedbackPanel({ feedback }: { feedback: FormFeedback }) {
+  const goodCount = feedback.goodPoints.length;
+  const correctionCount = feedback.corrections.length;
   return (
-    <Reveal style={styles.feedback}>
-      <Text style={styles.bandEyebrow}>FORM READOUT · {feedback.confidence.toUpperCase()} CONFIDENCE</Text>
-      <Text style={styles.captureTitle}>Your next useful adjustment</Text>
-      {feedback.goodPoints.map((item) => <Text key={item} style={styles.feedbackGood}>✓ {item}</Text>)}
-      {feedback.corrections.map((item) => <Text key={item} style={styles.feedbackCorrection}>→ {item}</Text>)}
-      {feedback.postureWarnings.map((item) => <Text key={item} style={styles.feedbackWarning}>! {item}</Text>)}
+    <Card tone="glass" style={styles.feedback}>
+      <View style={styles.feedbackHeader}>
+        <View style={styles.feedbackHeaderCopy}>
+          <Text style={styles.bandEyebrow}>FORM READOUT</Text>
+          <Text style={styles.captureTitle}>Your next useful adjustment</Text>
+        </View>
+        <StatusPill label={`${feedback.confidence} confidence`} color={CONFIDENCE_COLOR[feedback.confidence]} />
+      </View>
+      {feedback.goodPoints.map((item, index) => (
+        <Reveal key={item} delay={90 + index * 70}>
+          <View style={styles.feedbackRow}>
+            <View style={styles.feedbackIcon}><CheckCircle2 size={16} color={colors.success} /></View>
+            <Text style={styles.feedbackText}>{item}</Text>
+          </View>
+        </Reveal>
+      ))}
+      {feedback.corrections.map((item, index) => (
+        <Reveal key={item} delay={90 + (goodCount + index) * 70}>
+          <View style={styles.feedbackRow}>
+            <View style={styles.feedbackIcon}><ArrowRight size={16} color={colors.accent} /></View>
+            <Text style={styles.feedbackText}>{item}</Text>
+          </View>
+        </Reveal>
+      ))}
+      {feedback.postureWarnings.map((item, index) => (
+        <Reveal key={item} delay={90 + (goodCount + correctionCount + index) * 70}>
+          <View style={styles.feedbackRow}>
+            <View style={styles.feedbackIcon}><TriangleAlert size={16} color={colors.warning} /></View>
+            <Text style={styles.feedbackText}>{item}</Text>
+          </View>
+        </Reveal>
+      ))}
       <Text style={styles.safetyCopy}>General guidance only. Stop and seek professional help if movement causes pain.</Text>
-    </Reveal>
+    </Card>
   );
 }
 
 function IconAction({ label, icon, primary = false, onPress }: { label: string; icon: ReactNode; primary?: boolean; onPress: () => void }) {
-  return <Pressable accessibilityLabel={label} style={[styles.iconAction, primary && styles.iconActionPrimary]} onPress={onPress}>{icon}</Pressable>;
+  const { animatedStyle, pressHandlers } = usePressMotion();
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable accessibilityLabel={label} style={[styles.iconAction, primary && styles.iconActionPrimary]} onPress={onPress} {...pressHandlers}>{icon}</Pressable>
+    </Animated.View>
+  );
 }
 
 function CloseButton({ onPress }: { onPress: () => void }) {
@@ -194,6 +273,13 @@ function CloseButton({ onPress }: { onPress: () => void }) {
 }
 
 const styles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.lg },
+  headerCompact: { flexDirection: 'column', alignItems: 'stretch', gap: spacing.sm },
+  headerCopy: { flex: 1, gap: spacing.xs },
+  headerActionCompact: { alignSelf: 'flex-start' },
+  headerEyebrow: { color: colors.primary, fontSize: font.tiny, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.4 },
+  headerTitle: { color: colors.text, fontSize: font.h1, fontWeight: '800', lineHeight: 36 },
+  headerSubtitle: { color: colors.textDim, fontSize: font.body, lineHeight: 22, maxWidth: 680 },
   closeButton: { width: 44, height: 44, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
   exerciseBand: { gap: spacing.md, paddingVertical: spacing.lg, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   bandEyebrow: { color: colors.primary, fontSize: font.tiny, fontWeight: '900' },
@@ -202,7 +288,6 @@ const styles = StyleSheet.create({
   stageStack: { flexDirection: 'column' },
   visualStage: { flex: 1.15, minHeight: 360, borderRadius: radius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.accentDim, backgroundColor: colors.black, ...shadow.card },
   guideImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  visualScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,7,6,0.18)' },
   visualBadge: { position: 'absolute', top: spacing.md, left: spacing.md, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: colors.accent },
   visualBadgeText: { color: colors.black, fontSize: font.tiny, fontWeight: '900' },
   visualCopy: { position: 'absolute', right: spacing.lg, bottom: spacing.lg, left: spacing.lg },
@@ -222,7 +307,7 @@ const styles = StyleSheet.create({
   tempoButtonText: { color: colors.black, fontSize: font.body, fontWeight: '900', textTransform: 'capitalize' },
   safetyCopy: { color: colors.textMuted, fontSize: font.tiny, lineHeight: 16, textAlign: 'center' },
   pulseShell: { width: 82, height: 82, alignItems: 'center', justifyContent: 'center' },
-  pulseHalo: { position: 'absolute', width: 68, height: 68, borderRadius: 34, borderWidth: 2, borderColor: colors.primary },
+  pulseGlow: { width: 68, height: 68 },
   pulseCore: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt, borderWidth: 2, borderColor: colors.borderStrong },
   pulseCoreOn: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   pulseText: { color: colors.textDim, fontSize: 9, fontWeight: '900' },
@@ -241,8 +326,10 @@ const styles = StyleSheet.create({
   captureTitle: { color: colors.text, fontSize: font.h2, fontWeight: '900' },
   captureSub: { color: colors.textDim, fontSize: font.small, lineHeight: 20 },
   loading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, minHeight: 72 },
-  feedback: { gap: spacing.sm, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.accentDim },
-  feedbackGood: { color: colors.success, fontSize: font.small },
-  feedbackCorrection: { color: colors.text, fontSize: font.small },
-  feedbackWarning: { color: colors.warning, fontSize: font.small },
+  feedback: { gap: spacing.sm },
+  feedbackHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap', marginBottom: spacing.xs },
+  feedbackHeaderCopy: { gap: 3, flexShrink: 1 },
+  feedbackRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  feedbackIcon: { width: 26, height: 26, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  feedbackText: { flex: 1, color: colors.text, fontSize: font.small, lineHeight: 20, paddingTop: 4 },
 });

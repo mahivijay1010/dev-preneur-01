@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { RouteTransition } from '@/components/transition';
 import { useAppStore } from '@/store/appStore';
 import { colors } from '@/theme';
 
@@ -19,15 +20,19 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <View style={styles.root}>
-        <StatusBar style="light" backgroundColor={colors.bg} />
+        {/* backgroundColor is Android-only; iOS logs a warning if passed. */}
+        <StatusBar style="light" {...(Platform.OS === 'android' ? { backgroundColor: colors.bg } : {})} />
         <Stack
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: 'transparent' },
-            animation: 'fade_from_bottom',
-            animationDuration: 280,
+            // Native gets a real slide; web animates via the RouteTransition sweep.
+            animation: Platform.OS === 'ios' ? 'slide_from_right' : 'fade_from_bottom',
+            animationDuration: 300,
+            gestureEnabled: true,
           }}
         />
+        <RouteTransition />
       </View>
     </SafeAreaProvider>
   );

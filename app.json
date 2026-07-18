@@ -5,9 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "fitplan",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0D0F0E"
     },
@@ -16,7 +18,11 @@
       "bundleIdentifier": "com.fitplan.app"
     },
     "android": {
-      "package": "com.fitplan.app"
+      "package": "com.fitplan.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#D8FF72"
+      }
     },
     "web": {
       "bundler": "metro",

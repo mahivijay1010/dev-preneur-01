@@ -36,7 +36,8 @@ import {
   type LucideIcon,
 } from 'lucide-react-native';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ChipGroup, Field, InlineNotice, ProgressRing, SectionHeader, StatusPill } from '@/components/ui';
 import { AnimatedNumber, DirectionalReveal, usePressMotion, useReducedMotion } from '@/components/motion';
@@ -218,7 +219,7 @@ export default function Onboarding() {
   };
 
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page} edges={['top']}>
       <View style={styles.topBar}>
         <View style={styles.topBarInner}>
           <View style={styles.brandMark}><Target size={17} color={colors.black} strokeWidth={2.6} /></View>
@@ -237,6 +238,7 @@ export default function Onboarding() {
         style={styles.scroller}
         contentContainerStyle={[styles.shell, !wide && styles.shellNarrow]}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
       >
         {wide ? (
           <View style={styles.sidebar}>
@@ -501,7 +503,7 @@ export default function Onboarding() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

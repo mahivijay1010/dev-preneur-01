@@ -360,6 +360,224 @@ export function GlowPulse({
 }
 
 /**
+ * Drifting energy motes — tiny glowing particles floating upward. Fills its
+ * parent (absolute). Deterministic per-index randomness so renders are stable.
+ */
+export function ParticleField({
+  count = 14,
+  colors: palette = [colors.primary, colors.accent, colors.peach],
+  maxSize = 5,
+}: {
+  count?: number;
+  colors?: string[];
+  maxSize?: number;
+}) {
+  const reduced = useReducedMotion();
+  const particles = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => {
+        const rand = (seed: number) => {
+          const x = Math.sin(i * 127.1 + seed * 311.7) * 43758.5453;
+          return x - Math.floor(x);
+        };
+        return {
+          left: `${6 + rand(1) * 88}%` as const,
+          top: `${18 + rand(2) * 78}%` as const,
+          size: 2 + rand(3) * (maxSize - 2),
+          color: palette[i % palette.length],
+          duration: 5200 + rand(4) * 5600,
+          delay: rand(5) * 4000,
+          rise: 46 + rand(6) * 60,
+          peak: 0.35 + rand(7) * 0.45,
+        };
+      }),
+    [count, maxSize, palette],
+  );
+
+  if (reduced) return null;
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {particles.map((p, i) => (
+        <Particle key={i} {...p} />
+      ))}
+    </View>
+  );
+}
+
+function Particle({
+  left,
+  top,
+  size,
+  color,
+  duration,
+  delay,
+  rise,
+  peak,
+}: {
+  left: string;
+  top: string;
+  size: number;
+  color: string;
+  duration: number;
+  delay: number;
+  rise: number;
+  peak: number;
+}) {
+  const t = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(t, { toValue: 1, duration, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(t, { toValue: 0, duration: 10, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [delay, duration, t]);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: left as any,
+        top: top as any,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity: t.interpolate({ inputRange: [0, 0.15, 0.7, 1], outputRange: [0, peak, peak * 0.6, 0] }),
+        transform: [
+          { translateY: t.interpolate({ inputRange: [0, 1], outputRange: [0, -rise] }) },
+          { translateX: t.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, size * 1.4, -size] }) },
+        ],
+      }}
+    />
+  );
+}
+
+/**
+ * A slowly rotating gradient border ("energy ring") around its content. The
+ * gradient lives in a masked ring so only the border animates. Cross-platform.
+ */
+export function AnimatedBorder({
+  children,
+  radius: borderRadius = 22,
+  borderWidth = 1.5,
+  colors: ringColors = ['rgba(216,255,114,0)', 'rgba(216,255,114,0.85)', 'rgba(125,184,255,0.5)', 'rgba(216,255,114,0)'],
+  fill = 'rgba(20,23,20,0.92)',
+  speed = 8000,
+  style,
+}: {
+  children: ReactNode;
+  radius?: number;
+  borderWidth?: number;
+  colors?: string[];
+  fill?: string;
+  speed?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduced = useReducedMotion();
+  const spin = useRef(new Animated.Value(0)).current;
+  const [box, setBox] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    if (reduced) return;
+    const anim = Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: speed, easing: Easing.linear, useNativeDriver: true }),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [reduced, speed, spin]);
+
+  const diagonal = Math.ceil(Math.sqrt(box.w * box.w + box.h * box.h)) + 4;
+
+  return (
+    <View
+      style={[{ borderRadius, overflow: 'hidden' }, style]}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setBox((prev) => (prev.w === width && prev.h === height ? prev : { w: width, h: height }));
+      }}
+    >
+      {box.w > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: (box.w - diagonal) / 2,
+            top: (box.h - diagonal) / 2,
+            width: diagonal,
+            height: diagonal,
+            transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+          }}
+        >
+          <Gradient colors={ringColors} direction="diagonal" />
+        </Animated.View>
+      ) : null}
+      <View style={{ margin: borderWidth, borderRadius: Math.max(0, borderRadius - borderWidth), backgroundColor: fill, overflow: 'hidden' }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Cursor parallax (web only). Children shift subtly toward the pointer;
+ * on native it renders children unchanged (idle float comes from FloatingLayer).
+ */
+export function Parallax({
+  children,
+  strength = 10,
+  style,
+  contentStyle,
+}: {
+  children: ReactNode;
+  strength?: number;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+}) {
+  const reduced = useReducedMotion();
+  const size = useRef({ w: 1, h: 1 });
+  const x = useRef(new Animated.Value(0)).current;
+  const y = useRef(new Animated.Value(0)).current;
+
+  const spring = (value: Animated.Value, to: number) =>
+    Animated.spring(value, { toValue: to, damping: 20, stiffness: 90, mass: 0.9, useNativeDriver: true }).start();
+
+  if (Platform.OS !== 'web' || reduced) {
+    return <View style={[style, contentStyle]}>{children}</View>;
+  }
+
+  return (
+    <View
+      style={style}
+      onLayout={(e) => {
+        size.current = { w: e.nativeEvent.layout.width || 1, h: e.nativeEvent.layout.height || 1 };
+      }}
+      // @ts-expect-error web-only pointer handlers passthrough
+      onMouseMove={(e: any) => {
+        const native = e.nativeEvent ?? {};
+        const px = (native.offsetX ?? 0) / size.current.w - 0.5;
+        const py = (native.offsetY ?? 0) / size.current.h - 0.5;
+        spring(x, px * strength * 2);
+        spring(y, py * strength * 2);
+      }}
+      onMouseLeave={() => {
+        spring(x, 0);
+        spring(y, 0);
+      }}
+    >
+      <Animated.View style={[{ flex: 1 }, contentStyle, { transform: [{ translateX: x }, { translateY: y }] }]}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+}
+
+/**
  * A diagonal light band that sweeps across its parent on a slow loop. Parent must
  * have overflow: 'hidden'. Great for hero cards / premium badges.
  */

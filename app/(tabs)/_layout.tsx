@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { CalendarDays, ChartNoAxesCombined, ClipboardList, MessageCircle, Settings, Shield } from 'lucide-react-native';
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Gradient } from '@/components/depth';
 import { useAppStore } from '@/store/appStore';
@@ -30,6 +31,8 @@ function Icon({ icon: Icon, focused }: { icon: typeof CalendarDays; focused: boo
 
 export default function TabsLayout() {
   const isAdmin = useAppStore((state) => state.user?.role === 'admin');
+  // Keep the bar clear of the iPhone home indicator / Android gesture area.
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -39,7 +42,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.text,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: styles.label,
-        tabBarStyle: styles.bar,
+        tabBarStyle: [styles.bar, { height: 70 + insets.bottom, paddingBottom: 7 + insets.bottom }],
         tabBarItemStyle: styles.item,
       }}
     >

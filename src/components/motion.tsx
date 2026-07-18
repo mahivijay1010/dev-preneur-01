@@ -16,9 +16,6 @@ import { colors, font, radius, shadow, spacing } from '../theme';
 let reducedMotionValue = false;
 let reducedMotionReady = false;
 const reducedMotionSubscribers = new Set<(value: boolean) => void>();
-const spatialDrift = new Animated.Value(0);
-const spatialGlow = new Animated.Value(0);
-let spatialAnimations: Animated.CompositeAnimation[] = [];
 
 function initializeReducedMotion() {
   if (reducedMotionReady) return;
@@ -31,31 +28,6 @@ function initializeReducedMotion() {
     reducedMotionValue = value;
     reducedMotionSubscribers.forEach((subscriber) => subscriber(value));
   });
-}
-
-function setSpatialMotionEnabled(enabled: boolean) {
-  if (!enabled) {
-    spatialAnimations.forEach((animation) => animation.stop());
-    spatialAnimations = [];
-    spatialDrift.setValue(0.5);
-    spatialGlow.setValue(0.5);
-    return;
-  }
-  if (spatialAnimations.length) return;
-  const driftAnimation = Animated.loop(
-    Animated.sequence([
-      Animated.timing(spatialDrift, { toValue: 1, duration: 12000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(spatialDrift, { toValue: 0, duration: 12000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]),
-  );
-  const glowAnimation = Animated.loop(
-    Animated.sequence([
-      Animated.timing(spatialGlow, { toValue: 1, duration: 5200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      Animated.timing(spatialGlow, { toValue: 0, duration: 5200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-    ]),
-  );
-  spatialAnimations = [driftAnimation, glowAnimation];
-  spatialAnimations.forEach((animation) => animation.start());
 }
 
 export function useReducedMotion() {
@@ -217,6 +189,79 @@ export function FloatingLayer({
   );
 }
 
+// Word-by-word cascading text reveal. Words in `accentWords` are highlighted.
+// Supports explicit line breaks via '\n'. Cross-platform (pure Animated).
+export function StaggerText({
+  text,
+  style,
+  accentWords = [],
+  accentColor = colors.primary,
+  delay = 0,
+  stagger = 65,
+}: {
+  text: string;
+  style?: StyleProp<TextStyle>;
+  accentWords?: string[];
+  accentColor?: string;
+  delay?: number;
+  stagger?: number;
+}) {
+  const reduced = useReducedMotion();
+  const lines = useMemo(() => text.split('\n').map((line) => line.split(/\s+/).filter(Boolean)), [text]);
+  const totalWords = useMemo(() => lines.reduce((sum, words) => sum + words.length, 0), [lines]);
+  const values = useRef(Array.from({ length: totalWords }, () => new Animated.Value(reduced ? 1 : 0))).current;
+  const accents = useMemo(() => new Set(accentWords.map((w) => w.toLowerCase().replace(/[^a-z0-9]/g, ''))), [accentWords]);
+
+  useEffect(() => {
+    if (reduced) {
+      values.forEach((v) => v.setValue(1));
+      return;
+    }
+    values.forEach((v) => v.setValue(0));
+    const animations = values.map((v, index) =>
+      Animated.spring(v, { toValue: 1, delay: delay + index * stagger, damping: 14, stiffness: 160, mass: 0.7, useNativeDriver: true }),
+    );
+    Animated.parallel(animations).start();
+  }, [delay, reduced, stagger, text, values]);
+
+  let wordIndex = -1;
+  return (
+    <View>
+      {lines.map((words, lineIdx) => (
+        <View key={lineIdx} style={staggerStyles.line}>
+          {words.map((word, idx) => {
+            wordIndex += 1;
+            const v = values[wordIndex];
+            const isAccent = accents.has(word.toLowerCase().replace(/[^a-z0-9]/g, ''));
+            return (
+              <Animated.View
+                key={`${word}-${idx}`}
+                style={{
+                  opacity: v,
+                  transform: [
+                    { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [22, 0] }) },
+                    { rotate: v.interpolate({ inputRange: [0, 1], outputRange: ['3deg', '0deg'] }) },
+                    { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+                  ],
+                }}
+              >
+                <Text style={[style, isAccent && { color: accentColor }]}>
+                  {word}
+                  {idx < words.length - 1 ? ' ' : ''}
+                </Text>
+              </Animated.View>
+            );
+          })}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const staggerStyles = StyleSheet.create({
+  line: { flexDirection: 'row', flexWrap: 'wrap' },
+});
+
 export function usePressMotion(disabled = false) {
   const scale = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
@@ -260,31 +305,37 @@ export function AnimatedNumber({
 }) {
   const reduced = useReducedMotion();
   const current = useRef(reduced ? value : 0);
-  const [display, setDisplay] = useState(current.current);
+  const [display, setDisplay] = useState(current.current.toFixed(decimals));
 
   useEffect(() => {
     if (reduced) {
       current.current = value;
-      setDisplay(value);
+      setDisplay(value.toFixed(decimals));
       return;
     }
 
     const from = current.current;
     const started = Date.now();
     let frame = 0;
+    let lastLabel = from.toFixed(decimals);
     const tick = () => {
       const elapsed = Math.min(1, (Date.now() - started) / duration);
       const eased = 1 - Math.pow(1 - elapsed, 3);
       const next = from + (value - from) * eased;
       current.current = next;
-      setDisplay(next);
+      // Only re-render when the visible string actually changes (not every frame).
+      const label = next.toFixed(decimals);
+      if (label !== lastLabel) {
+        lastLabel = label;
+        setDisplay(label);
+      }
       if (elapsed < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [duration, reduced, value]);
+  }, [decimals, duration, reduced, value]);
 
-  return <Text style={style}>{prefix}{display.toFixed(decimals)}{suffix}</Text>;
+  return <Text style={style}>{prefix}{display}{suffix}</Text>;
 }
 
 export function EnergyLoader({ dark = false }: { dark?: boolean }) {
@@ -319,76 +370,6 @@ export function EnergyLoader({ dark = false }: { dark?: boolean }) {
           ]}
         />
       ))}
-    </View>
-  );
-}
-
-export function SpatialBackdrop() {
-  const reduced = useReducedMotion();
-
-  useEffect(() => {
-    setSpatialMotionEnabled(!reduced);
-  }, [reduced]);
-
-  const lanes = useMemo(() => Array.from({ length: 4 }, (_, index) => index), []);
-  const beats = useMemo(() => Array.from({ length: 7 }, (_, index) => index), []);
-
-  return (
-    <View pointerEvents="none" style={styles.backdrop}>
-      <View style={styles.backdropBase} />
-      <View style={styles.cadenceHeader}>
-        <View style={styles.cadenceLabel} />
-        <View style={styles.cadenceBeats}>
-          {beats.map((index) => (
-            <Animated.View
-              key={index}
-              style={[
-                styles.cadenceBeat,
-                index === 3 && styles.cadenceBeatStrong,
-                { opacity: spatialGlow.interpolate({ inputRange: [0, 1], outputRange: [0.16 + index * 0.018, 0.36 - index * 0.018] }) },
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-      <Animated.View
-        style={[
-          styles.trackField,
-          {
-            opacity: spatialGlow.interpolate({ inputRange: [0, 1], outputRange: [0.16, 0.27] }),
-            transform: [
-              { translateX: spatialDrift.interpolate({ inputRange: [0, 1], outputRange: [-26, 18] }) },
-              { translateY: spatialGlow.interpolate({ inputRange: [0, 1], outputRange: [8, -6] }) },
-            ],
-          },
-        ]}
-      >
-        {lanes.map((index) => (
-          <View
-            key={index}
-            style={[
-              styles.trackLane,
-              {
-                left: index * 34,
-                top: index * 34,
-                right: index * 34,
-                bottom: index * 34,
-                borderColor: index === 1 ? colors.primaryDim : index === 2 ? colors.accentDim : colors.borderStrong,
-              },
-            ]}
-          />
-        ))}
-        <Animated.View
-          style={[
-            styles.trackRunner,
-            {
-              opacity: spatialGlow.interpolate({ inputRange: [0, 1], outputRange: [0.42, 0.9] }),
-              transform: [{ translateX: spatialDrift.interpolate({ inputRange: [0, 1], outputRange: [70, 390] }) }],
-            },
-          ]}
-        />
-      </Animated.View>
-      <View style={styles.edgeShade} />
     </View>
   );
 }
@@ -467,17 +448,6 @@ export function AchievementBurst({
 const styles = StyleSheet.create({
   loader: { height: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   loaderBar: { width: 3, height: 17, borderRadius: 2 },
-  backdrop: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', backgroundColor: colors.bg },
-  backdropBase: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.bg },
-  cadenceHeader: { position: 'absolute', top: 28, left: '7%', right: '7%', height: 18, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, opacity: 0.8 },
-  cadenceLabel: { width: 34, height: 3, borderRadius: 2, backgroundColor: colors.primary },
-  cadenceBeats: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cadenceBeat: { flex: 1, height: 1, backgroundColor: colors.borderStrong },
-  cadenceBeatStrong: { flex: 1.6, height: 2, backgroundColor: colors.accent },
-  trackField: { position: 'absolute', width: 760, height: 520, left: -270, bottom: -300 },
-  trackLane: { position: 'absolute', borderWidth: 1, borderRadius: 360 },
-  trackRunner: { position: 'absolute', top: 68, left: 0, width: 48, height: 3, borderRadius: 2, backgroundColor: colors.primary, ...shadow.glow },
-  edgeShade: { position: 'absolute', top: 0, bottom: 0, right: 0, width: 2, backgroundColor: colors.successDim, opacity: 0.34 },
   burstOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 100, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(9,10,9,0.42)' },
   burstCore: { minWidth: 230, minHeight: 130, alignItems: 'center', justifyContent: 'center', gap: spacing.xs, padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.primary, ...shadow.glow },
   burstEyebrow: { color: colors.primary, fontSize: font.small, fontWeight: '900', letterSpacing: 1.2 },

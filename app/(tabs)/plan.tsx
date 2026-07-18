@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   mealName: { color: colors.text, fontSize: font.small, fontWeight: '700' },
   mealMetaRow: { flexDirection: 'row', gap: spacing.md },
   mealMeta: { color: colors.textDim, fontSize: font.tiny },
-  replaceButton: { minWidth: 42, minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.md, backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primaryDim, paddingHorizontal: 11 },
+  replaceButton: { minWidth: 44, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.md, backgroundColor: colors.primarySoft, borderWidth: 1, borderColor: colors.primaryDim, paddingHorizontal: 11 },
   replaceText: { color: colors.primary, fontSize: font.tiny, fontWeight: '800' },
   exerciseRow: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: spacing.sm },
   exerciseNumber: { width: 34, height: 34, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.peachDim },

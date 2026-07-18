@@ -20,10 +20,20 @@ function resolveApiUrl(): string {
     ?.split(':')[0];
   const nativeHost = developmentHost || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
 
-  return configured.replace(
+  const resolved = configured.replace(
     /^(https?:\/\/)(localhost|127\.0\.0\.1)(?=[:/])/i,
     `$1${nativeHost}`,
   );
+
+  // In a release build, a localhost API URL can never reach a server — surface
+  // it loudly instead of failing silently with confusing network errors.
+  if (!__DEV__ && /^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(?=[:/])/i.test(resolved)) {
+    console.warn(
+      '[FitPlan] EXPO_PUBLIC_API_URL points at localhost in a production build. ' +
+        'Set it to your deployed https API before shipping.',
+    );
+  }
+  return resolved;
 }
 
 export class ApiError extends Error {
