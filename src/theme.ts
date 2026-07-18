@@ -84,6 +84,25 @@ export const glass = {
   highlight: 'rgba(255,255,255,0.14)',
 };
 
+// Web-only: overrides the browser's forced light autofill styling on inputs
+// (Chrome/Safari otherwise ignore inline/RN styles here — only a real CSS
+// rule targeting :-webkit-autofill can win). Injected by app/+html.tsx for
+// static/production builds and re-asserted at runtime in app/_layout.tsx,
+// since Metro's web dev-client clears the +html.tsx <style> shortly after
+// first paint.
+export const webAutofillFixCSS = `
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: ${colors.text} !important;
+    caret-color: ${colors.text} !important;
+    box-shadow: 0 0 0 1000px ${colors.surfaceAlt} inset !important;
+    -webkit-box-shadow: 0 0 0 1000px ${colors.surfaceAlt} inset !important;
+    transition: background-color 600000s ease-in-out 0s, color 600000s ease-in-out 0s;
+  }
+`;
+
 export const shadow = {
   // Soft ambient card lift.
   card: {

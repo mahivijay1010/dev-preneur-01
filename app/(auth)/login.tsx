@@ -40,6 +40,12 @@ export default function Login() {
     setMode(next);
     setErrors({});
     clearAuthError();
+    // Switching modes starts a fresh form — otherwise whatever was typed (or
+    // autofilled by the browser) on one side leaks into the other.
+    setName('');
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
   };
 
   const submit = async () => {
