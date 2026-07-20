@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RouteTransition } from '@/components/transition';
 import { useAppStore } from '@/store/appStore';
 import { colors, webAutofillFixCSS } from '@/theme';
+import { WebCameraHost } from '@/services/webCamera';
 
 const AUTOFILL_STYLE_ID = 'fitplan-autofill-fix';
 
@@ -49,6 +50,7 @@ export default function RootLayout() {
           }}
         />
         <RouteTransition />
+        <WebCameraHost />
       </View>
     </SafeAreaProvider>
   );

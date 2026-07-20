@@ -29,6 +29,7 @@ function publicUser(user) {
     provider: user.provider,
     role: user.role,
     consentAcceptedAt: user.consentAcceptedAt?.toISOString() ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     createdAt: user.createdAt.toISOString(),
   };
 }

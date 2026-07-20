@@ -1,25 +1,31 @@
 import { useRouter } from 'expo-router';
 import {
   BellRing,
+  Camera,
   Check,
   ChevronRight,
   Cloud,
   CloudOff,
+  ImagePlus,
   LogOut,
   Pencil,
   RefreshCcw,
   RotateCcw,
   ShieldCheck,
   Stethoscope,
+  Trash2,
   Watch,
+  X,
 } from 'lucide-react-native';
-import { Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Modal, Platform, Pressable, StyleSheet, Switch, Text, useWindowDimensions, View } from 'react-native';
 
 import { Button, Card, ChipGroup, PageHeader, ProgressRing, Screen, StatusPill } from '@/components/ui';
 import { Gradient } from '@/components/depth';
-import { Reveal } from '@/components/motion';
+import { EnergyLoader, Reveal } from '@/components/motion';
 import { ProteinPicker } from '@/components/ProteinPicker';
 import { goalLabel, recommendedProteinPerKg } from '@/engine/nutrition';
+import { captureFromCamera, pickFromLibrary } from '@/services/imagePicker';
 import { isAIEnabled } from '@/services/claude';
 import { requestPermission, syncReminders } from '@/services/notifications';
 import { useAppStore } from '@/store/appStore';
@@ -46,7 +52,39 @@ export default function Profile() {
     setReminderPrefs,
     connectedWearables,
     assignedExpertId,
+    updateAvatar,
   } = useAppStore();
+
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const pickAvatar = async (picker: typeof captureFromCamera) => {
+    setAvatarPickerOpen(false);
+    setAvatarBusy(true);
+    setAvatarError(null);
+    try {
+      const image = await picker({ aspect: [1, 1] });
+      if (!image) return; // user cancelled
+      if (!image.base64) {
+        setAvatarError('Could not read that photo. Try a different one.');
+        return;
+      }
+      const ok = await updateAvatar(`data:${image.mimeType};base64,${image.base64}`);
+      if (!ok) setAvatarError('Could not save your photo. Check your connection and try again.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    setAvatarPickerOpen(false);
+    setAvatarBusy(true);
+    setAvatarError(null);
+    const ok = await updateAvatar(null);
+    setAvatarBusy(false);
+    if (!ok) setAvatarError('Could not remove your photo. Check your connection and try again.');
+  };
 
   const persistReminders = async (next: typeof reminderPrefs) => {
     setReminderPrefs(next);
@@ -78,11 +116,29 @@ export default function Profile() {
       />
 
       <Reveal delay={50} style={[styles.accountHero, compact && styles.accountHeroCompact]}>
-        <View style={styles.avatar}><Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} /><Text style={styles.avatarText}>{initials}</Text><View style={styles.onlineDot} /></View>
+        <Pressable
+          accessibilityLabel="Change profile photo"
+          disabled={avatarBusy}
+          onPress={() => setAvatarPickerOpen(true)}
+          style={styles.avatar}
+        >
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
+          ) : (
+            <>
+              <Gradient colors={gradients.primary} direction="diagonal" radius={radius.md} />
+              <Text style={styles.avatarText}>{initials}</Text>
+            </>
+          )}
+          <View style={styles.avatarEditBadge}>
+            {avatarBusy ? <EnergyLoader dark /> : <Camera size={13} color={colors.black} />}
+          </View>
+        </Pressable>
         <View style={styles.accountCopy}>
           <Text style={styles.accountName}>{user?.name || 'FitPlan member'}</Text>
           <Text style={styles.accountEmail}>{user?.email || 'No email available'}</Text>
           <View style={styles.accountMeta}><ShieldCheck size={15} color={colors.success} /><Text style={styles.accountMetaText}>Private account · MongoDB cloud backup</Text></View>
+          {avatarError ? <Text style={styles.avatarErrorText}>{avatarError}</Text> : null}
         </View>
         <View style={styles.syncBox}>
           <Text style={styles.syncLabel}>LAST SYNC</Text>
@@ -90,6 +146,15 @@ export default function Profile() {
           <Button label="Sync now" variant="ghost" icon={<RefreshCcw size={16} color={colors.text} />} loading={syncStatus === 'syncing'} onPress={() => void syncNow()} style={styles.syncButton} />
         </View>
       </Reveal>
+
+      <AvatarPickerModal
+        visible={avatarPickerOpen}
+        hasPhoto={Boolean(user?.avatarUrl)}
+        onClose={() => setAvatarPickerOpen(false)}
+        onTakePhoto={() => void pickAvatar(captureFromCamera)}
+        onChoosePhoto={() => void pickAvatar(pickFromLibrary)}
+        onRemovePhoto={() => void removeAvatar()}
+      />
 
       <View style={[styles.grid, compact && styles.gridCompact]}>
         <Card tone="raised" style={styles.setupCard}>
@@ -199,6 +264,77 @@ function ActionRow({ icon, label, sub, onPress, loading = false }: { icon: React
   );
 }
 
+function AvatarPickerModal({
+  visible,
+  hasPhoto,
+  onClose,
+  onTakePhoto,
+  onChoosePhoto,
+  onRemovePhoto,
+}: {
+  visible: boolean;
+  hasPhoto: boolean;
+  onClose: () => void;
+  onTakePhoto: () => void;
+  onChoosePhoto: () => void;
+  onRemovePhoto: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={pickerStyles.backdrop}>
+        <View style={pickerStyles.sheet}>
+          <View style={pickerStyles.header}>
+            <Text style={pickerStyles.title}>Profile photo</Text>
+            <Pressable accessibilityLabel="Close" hitSlop={8} style={pickerStyles.close} onPress={onClose}>
+              <X size={16} color={colors.text} />
+            </Pressable>
+          </View>
+          <PickerRow icon={<Camera size={18} color={colors.text} />} label="Take photo" onPress={onTakePhoto} />
+          <PickerRow icon={<ImagePlus size={18} color={colors.text} />} label="Choose photo" onPress={onChoosePhoto} />
+          {hasPhoto ? (
+            <PickerRow icon={<Trash2 size={18} color={colors.danger} />} label="Remove photo" danger onPress={onRemovePhoto} />
+          ) : null}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function PickerRow({
+  icon,
+  label,
+  danger = false,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [pickerStyles.row, pressed && pickerStyles.rowPressed]}
+    >
+      <View style={pickerStyles.rowIcon}>{icon}</View>
+      <Text style={[pickerStyles.rowLabel, danger && { color: colors.danger }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+const pickerStyles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(5,6,5,0.72)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  sheet: { width: '100%', maxWidth: 360, borderRadius: radius.lg, backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.borderStrong, padding: spacing.md, gap: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
+  title: { color: colors.text, fontSize: font.h3, fontWeight: '800' },
+  close: { width: 30, height: 30, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  row: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: radius.sm },
+  rowPressed: { backgroundColor: colors.surfaceAlt },
+  rowIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
+  rowLabel: { color: colors.text, fontSize: font.body, fontWeight: '700' },
+});
+
 function coachPreview(tone?: CoachTone) {
   const messages: Record<CoachTone, string> = {
     supportive: 'You do not need a perfect day. Let’s protect the next useful action.',
@@ -225,8 +361,10 @@ const styles = StyleSheet.create({
   accountHero: { minHeight: 154, flexDirection: 'row', alignItems: 'center', gap: spacing.lg, padding: spacing.xl, borderRadius: radius.md, backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.borderStrong },
   accountHeroCompact: { flexWrap: 'wrap', padding: spacing.lg },
   avatar: { width: 76, height: 76, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, position: 'relative' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: radius.md },
   avatarText: { color: colors.black, fontSize: font.h2, fontWeight: '900' },
-  onlineDot: { position: 'absolute', right: -3, bottom: -3, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.success, borderWidth: 3, borderColor: colors.surfaceSunken },
+  avatarEditBadge: { position: 'absolute', right: -4, bottom: -4, width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderWidth: 3, borderColor: colors.surfaceSunken },
+  avatarErrorText: { color: colors.danger, fontSize: font.tiny, marginTop: 6 },
   accountCopy: { flex: 1, minWidth: 220, gap: 3 },
   accountName: { color: colors.text, fontSize: font.h2, fontWeight: '900' },
   accountEmail: { color: colors.textDim, fontSize: font.small },

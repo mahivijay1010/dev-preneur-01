@@ -39,6 +39,7 @@ export interface User {
   provider: 'email' | 'google' | 'phone';
   role: 'user' | 'admin';
   consentAcceptedAt: string | null;
+  avatarUrl: string | null;
   createdAt: string;
 }
 

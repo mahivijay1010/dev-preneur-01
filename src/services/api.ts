@@ -136,6 +136,13 @@ export const authApi = {
       token,
     );
   },
+  updateAvatar(token: string, avatarUrl: string | null) {
+    return request<{ user: User }>(
+      '/users/me/avatar',
+      { method: 'PATCH', body: JSON.stringify({ avatarUrl }) },
+      token,
+    );
+  },
   loadState(token: string) {
     return request<{ state: CloudState }>('/users/me/state', {}, token);
   },

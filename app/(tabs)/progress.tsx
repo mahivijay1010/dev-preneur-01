@@ -12,7 +12,7 @@ import {
   Sparkles,
   Target,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
@@ -36,7 +36,6 @@ const SEVERITY_COLOR: Record<HabitInsight['severity'], string> = {
   warning: colors.warning,
 };
 
-const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
 
 export default function Progress() {
   const router = useRouter();
@@ -212,6 +211,11 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
 
 function WeightChart({ data, target, baseline }: { data: (DailyLog & { weightKg: number })[]; target: number; baseline: number }) {
   const draw = useRef(new Animated.Value(1000)).current;
+  // Plain state mirrors the Animated.Value so the line can be a normal (non-
+  // Animated) Polyline: react-native-web's Animated wrapper forces
+  // `collapsable={false}` onto its host element, which leaks through
+  // react-native-svg straight to the DOM as an invalid `polyline` attribute.
+  const [drawOffset, setDrawOffset] = useState(1000);
   const values = data.length ? data.map((item) => item.weightKg) : [baseline];
   const min = Math.min(...values, target) - 1;
   const max = Math.max(...values, target) + 1;
@@ -225,8 +229,10 @@ function WeightChart({ data, target, baseline }: { data: (DailyLog & { weightKg:
   const last = points.split(' ').at(-1)?.split(',').map(Number) ?? [20, 70];
 
   useEffect(() => {
+    const listener = draw.addListener(({ value }) => setDrawOffset(value));
     draw.setValue(1000);
     Animated.timing(draw, { toValue: 0, duration: 1100, useNativeDriver: false }).start();
+    return () => draw.removeListener(listener);
   }, [draw, points]);
 
   return (
@@ -234,7 +240,7 @@ function WeightChart({ data, target, baseline }: { data: (DailyLog & { weightKg:
       <Svg width="100%" height={146} viewBox="0 0 520 146">
         {[24, 74, 124].map((y) => <Line key={y} x1="20" y1={y} x2="500" y2={y} stroke={colors.border} strokeWidth="1" />)}
         <Line x1="20" y1={targetY} x2="500" y2={targetY} stroke={colors.primary} strokeWidth="1.5" strokeDasharray="6 7" opacity={0.65} />
-        {values.length > 1 ? <AnimatedPolyline points={points} fill="none" stroke={colors.accent} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="1000" strokeDashoffset={draw as any} /> : null}
+        {values.length > 1 ? <Polyline points={points} fill="none" stroke={colors.accent} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="1000" strokeDashoffset={drawOffset} /> : null}
         <Circle cx={last[0]} cy={last[1]} r="7" fill={colors.bg} stroke={colors.accent} strokeWidth="4" />
       </Svg>
       <View style={styles.chartLegend}><View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.accent }]} /><Text style={styles.legendText}>{data.length ? `${data.length} weigh-ins` : 'Log weight to build the trend'}</Text></View><View style={styles.legendItem}><View style={[styles.legendDash, { backgroundColor: colors.primary }]} /><Text style={styles.legendText}>Target {target} kg</Text></View></View>

@@ -101,6 +101,7 @@ interface AppState {
   bootstrapSession: () => Promise<void>;
   clearAuthError: () => void;
   acceptConsent: () => Promise<boolean>;
+  updateAvatar: (avatarUrl: string | null) => Promise<boolean>;
   signOut: () => void;
   syncNow: () => Promise<void>;
 
@@ -304,6 +305,18 @@ export const useAppStore = create<AppState>()(
           return true;
         } catch (error) {
           set({ authLoading: false, authError: errorMessage(error), syncStatus: 'offline' });
+          return false;
+        }
+      },
+
+      updateAvatar: async (avatarUrl) => {
+        const { user, authToken } = get();
+        if (!user || !authToken) return false;
+        try {
+          const response = await authApi.updateAvatar(authToken, avatarUrl);
+          set({ user: response.user, syncStatus: 'synced' });
+          return true;
+        } catch {
           return false;
         }
       },

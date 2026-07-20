@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     provider: { type: String, enum: ['email'], default: 'email' },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     consentAcceptedAt: { type: Date, default: null },
+    avatarUrl: { type: String, default: null },
     appState: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true, minimize: false },

@@ -1,10 +1,13 @@
 // Thin wrapper over expo-image-picker. Returns both a displayable URI and a
 // base64 payload (for the vision model). Handles permissions and cancellation.
-// Works on web too (opens the native file dialog); camera falls back to library
-// where a live camera isn't available.
+// On web, "Take photo" opens a real live camera (see webCamera.tsx) instead of
+// a file dialog; it only falls back to the library picker if the browser has
+// no camera API at all (e.g. an insecure http origin).
 
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
+
+import { isWebCameraSupported, openWebCamera } from './webCamera';
 
 export interface PickedImage {
   uri: string;
@@ -29,15 +32,22 @@ function firstAsset(result: ImagePicker.ImagePickerResult): PickedImage | null {
   };
 }
 
-export async function captureFromCamera(): Promise<PickedImage | null> {
-  if (Platform.OS === 'web') return pickFromLibrary();
+export async function captureFromCamera(
+  options?: Partial<ImagePicker.ImagePickerOptions>,
+): Promise<PickedImage | null> {
+  if (Platform.OS === 'web') {
+    if (isWebCameraSupported()) return openWebCamera();
+    return pickFromLibrary(options); // no camera API available (e.g. insecure origin)
+  }
   const perm = await ImagePicker.requestCameraPermissionsAsync();
-  if (!perm.granted) return pickFromLibrary();
-  return firstAsset(await ImagePicker.launchCameraAsync(COMMON));
+  if (!perm.granted) return pickFromLibrary(options);
+  return firstAsset(await ImagePicker.launchCameraAsync({ ...COMMON, ...options }));
 }
 
-export async function pickFromLibrary(): Promise<PickedImage | null> {
+export async function pickFromLibrary(
+  options?: Partial<ImagePicker.ImagePickerOptions>,
+): Promise<PickedImage | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) return null;
-  return firstAsset(await ImagePicker.launchImageLibraryAsync(COMMON));
+  return firstAsset(await ImagePicker.launchImageLibraryAsync({ ...COMMON, ...options }));
 }
